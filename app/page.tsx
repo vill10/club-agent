@@ -1,11 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { BudgetMeter } from "@/components/budget-meter";
 import { IntentChips } from "@/components/intent-chips";
 import { QueryBox } from "@/components/query-box";
+import {
+  TurnstileGate,
+  type TurnstileGateHandle,
+} from "@/components/turnstile-gate";
 import type { CreateRunResponse, Intent } from "@/types";
 
 type RunStatus = "idle" | "submitting" | "budget" | "rate_limited" | "error";
@@ -18,18 +22,16 @@ export default function Home() {
   const [step, setStep] = useState<"query" | "chips">("query");
   const [rawQuery, setRawQuery] = useState("");
   const [intent, setIntent] = useState<Intent | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState("");
   const [runStatus, setRunStatus] = useState<RunStatus>("idle");
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
-  function handleExtracted(args: {
-    rawQuery: string;
-    intent: Intent;
-    turnstileToken: string;
-  }) {
+  // Page-level Turnstile widget, mounted across both steps so a freshly-issued
+  // single-use token can be obtained right before the /api/runs call.
+  const turnstileRef = useRef<TurnstileGateHandle>(null);
+
+  function handleExtracted(args: { rawQuery: string; intent: Intent }) {
     setRawQuery(args.rawQuery);
     setIntent(args.intent);
-    setTurnstileToken(args.turnstileToken);
     setRunStatus("idle");
     setStep("chips");
   }
@@ -41,6 +43,16 @@ export default function Home() {
     setRetryAfter(null);
 
     try {
+      // Turnstile tokens are single-use + short-lived. Mint a FRESH one right
+      // before the run call so /api/runs never sees a spent/expired token.
+      let turnstileToken: string;
+      try {
+        turnstileToken = await turnstileRef.current!.getFreshToken();
+      } catch {
+        setRunStatus("error");
+        return;
+      }
+
       const res = await fetch("/api/runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,6 +156,13 @@ export default function Home() {
             )}
           </div>
         )}
+
+        {/* Page-level Turnstile: stays mounted across both steps so the run
+            call always sends a freshly-minted token. Kept subtle below the
+            interactive area. */}
+        <div className="mt-6 w-full">
+          <TurnstileGate ref={turnstileRef} />
+        </div>
       </div>
 
       <footer className="flex justify-center px-5 pb-8">
