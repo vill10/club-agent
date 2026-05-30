@@ -36,8 +36,33 @@ export interface ToolContext {
 const MAX_ENRICH = 6;
 const enrichedByRun = new Map<string, Set<string>>();
 
+// Per-run side store for fetched page text (runId → (normalized url → cleaned
+// text)). The whole point: raw page text NEVER flows back to the orchestrator
+// (Sonnet). fetch_url stows the cleaned text here and returns only a compact
+// receipt; extract_fields reads the text back out of here by url. This keeps
+// the orchestrator's message history compact — the multi-KB page bodies that
+// previously rode every subsequent turn (and tripped the token breaker) stay
+// out of the conversation entirely. Cleared at run finalization by
+// clearRunEnrichment so text is freed and the map doesn't leak across runs.
+const fetchedByRun = new Map<string, Map<string, string>>();
+
+// Normalize a url for use as the side-store key so fetch_url and extract_fields
+// agree on the same key even if the model passes a slightly different string
+// (trailing slash, casing of host). Falls back to the raw string if it isn't a
+// parseable URL.
+function normalizeUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return url.trim();
+  }
+}
+
 export function clearRunEnrichment(runId: string): void {
   enrichedByRun.delete(runId);
+  fetchedByRun.delete(runId);
 }
 
 export interface Tool<I> {
@@ -114,7 +139,13 @@ const searchWebTool: Tool<{ query: string }> = {
     emitCall(runId, "search_web", `Поиск: ${query}`);
     const results = await searchWeb(query);
     emitResult(runId, "search_web", `Найдено результатов: ${results.length}`, results.length);
-    return results;
+    // Trim each result's snippet — the model only needs enough to pick which
+    // urls to fetch. Long Tavily content blocks would bloat orchestrator context.
+    return results.map((r) => ({
+      title: r.title,
+      url: r.url,
+      snippet: r.snippet.slice(0, 160),
+    }));
   },
 };
 
@@ -163,7 +194,15 @@ const queryGooglePlacesTool: Tool<{ query: string }> = {
       `Найдено в Google Places: ${results.length}`,
       results.length,
     );
-    return results;
+    // Drop `location` (lat/lng) — the model picks candidates from
+    // name/address/placeId/phone/website, not coordinates. Keeps context lean.
+    return results.map((r) => ({
+      name: r.name,
+      address: r.address,
+      placeId: r.placeId,
+      ...(r.phone ? { phone: r.phone } : {}),
+      ...(r.website ? { website: r.website } : {}),
+    }));
   },
 };
 
@@ -203,7 +242,7 @@ async function readCappedText(res: Response): Promise<string> {
 const fetchUrlTool: Tool<{ url: string }> = {
   name: "fetch_url",
   description:
-    "Загружает HTTPS-страницу (сайт клуба, профиль 2ГИС и т.п.) и возвращает очищенный читаемый текст. Только https; приватные/локальные адреса блокируются.",
+    "Загружает HTTPS-страницу (сайт клуба, профиль 2ГИС и т.п.), очищает её и СОХРАНЯЕТ текст на сервере. Возвращает только КВИТАНЦИЮ { ok, url, chars, preview } — НЕ полный текст. Чтобы извлечь поля из загруженной страницы, затем вызови extract_fields(cardId, name, url) с тем же url. Только https; приватные/локальные адреса блокируются.",
   inputSchema: z.object({
     url: z.string().describe("Полный https URL страницы."),
   }),
@@ -241,8 +280,29 @@ const fetchUrlTool: Tool<{ url: string }> = {
       .replace(/\n{3,}/g, "\n\n")
       .trim();
     const truncated = text.slice(0, MAX_TEXT_CHARS);
-    emitResult(runId, "fetch_url", `Загружено, ${truncated.length} симв.`);
-    return truncated;
+
+    // Stow the cleaned text in the per-run side store keyed by normalized url.
+    // The big text stays here; extract_fields reads it back. The orchestrator
+    // gets only the compact receipt below.
+    const normalizedUrl = normalizeUrl(current);
+    let store = fetchedByRun.get(runId);
+    if (!store) {
+      store = new Map<string, string>();
+      fetchedByRun.set(runId, store);
+    }
+    store.set(normalizedUrl, truncated);
+    // Also index under the originally-requested url so extract_fields finds the
+    // text whether the model passes the pre- or post-redirect url.
+    const normalizedRequested = normalizeUrl(url);
+    if (normalizedRequested !== normalizedUrl) {
+      store.set(normalizedRequested, truncated);
+    }
+
+    emitResult(runId, "fetch_url", `Загружено, ${truncated.length} симв.`, truncated.length);
+    // Compact receipt only — never the full text. A tiny preview gives the
+    // model situational awareness without bloating its context.
+    const preview = truncated.slice(0, 200);
+    return { ok: true, url: normalizedUrl, chars: truncated.length, preview };
   },
 };
 
@@ -266,20 +326,32 @@ const EXTRACT_SYSTEM = `Ты извлекаешь структурированн
 const extractFieldsTool: Tool<{
   cardId: string;
   name: string;
-  rawText: string;
-  sourceUrl: string;
+  url: string;
+  sourceUrl?: string;
 }> = {
   name: "extract_fields",
   description:
-    "Извлекает поля клуба (район, адрес, расписание, цена, возраст, контакты) из сырого текста страницы, создаёт/обновляет карточку и возвращает извлечённые поля.",
+    "Извлекает поля клуба (район, адрес, расписание, цена, возраст, контакты) из СТРАНИЦЫ, которую ты ранее загрузил через fetch_url(url). Передай тот же url; текст берётся из загруженной страницы (не передавай текст сам). Создаёт/обновляет карточку и возвращает извлечённые поля. Если страница по этому url не была загружена — сначала вызови fetch_url(url).",
   inputSchema: z.object({
     cardId: z.string(),
     name: z.string(),
-    rawText: z.string(),
-    sourceUrl: z.string(),
+    url: z.string().describe("Тот же https URL, который ты уже загрузил через fetch_url."),
+    sourceUrl: z.string().optional().describe("Необязательно: канонический источник для записи в контакты/sources (по умолчанию = url)."),
   }),
-  async handler({ cardId, name, rawText, sourceUrl }, { runId }) {
+  async handler({ cardId, name, url, sourceUrl }, { runId }) {
     emitCall(runId, "extract_fields", `Извлечение полей: ${name}`);
+
+    // Read the page text the model fetched earlier from the per-run side store.
+    // If it isn't there, the model called extract_fields without fetching first
+    // — return a corrective error so it loops back through fetch_url.
+    const store = fetchedByRun.get(runId);
+    const rawText = store?.get(normalizeUrl(url));
+    if (rawText === undefined) {
+      emitResult(runId, "extract_fields", `Нет загруженного текста для ${url}`);
+      return { error: "no fetched content for url; call fetch_url first" };
+    }
+    // The canonical source url recorded on the card/contacts.
+    const srcUrl = sourceUrl ?? url;
 
     // Backstop: enforce the deep-enrichment cap regardless of model behaviour.
     // New cards beyond MAX_ENRICH are skipped (no Haiku call); already-enriched
@@ -299,14 +371,14 @@ const extractFieldsTool: Tool<{
     }
     enriched.add(cardId);
 
-    const user = `Название клуба: ${name}\nИсточник (URL): ${sourceUrl}\n\nТекст страницы:\n${rawText.slice(0, MAX_TEXT_CHARS)}`;
+    const user = `Название клуба: ${name}\nИсточник (URL): ${srcUrl}\n\nТекст страницы:\n${rawText.slice(0, MAX_TEXT_CHARS)}`;
     const fallback: Extraction = { contacts: [] };
     const extracted = await callHaikuJSON(EXTRACT_SYSTEM, user, extractionSchema, fallback);
 
-    // Stamp sourceUrl onto contacts that lack a source.
+    // Stamp srcUrl onto contacts that lack a source.
     const contacts: Contact[] = (extracted.contacts ?? []).map((c) => ({
       ...c,
-      source: c.source ?? sourceUrl,
+      source: c.source ?? srcUrl,
     }));
 
     const toField = (f: typeof extracted.district): CardField<string> | undefined =>
@@ -322,7 +394,7 @@ const extractFieldsTool: Tool<{
       priceRange: toField(extracted.priceRange),
       ageRange: toField(extracted.ageRange),
       contacts,
-      sources: [sourceUrl],
+      sources: [srcUrl],
     });
 
     emitCardUpdate(runId, cardId);

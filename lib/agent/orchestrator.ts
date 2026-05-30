@@ -23,7 +23,13 @@ import type { Intent, RunEventKind, RunEventPayload } from "@/types";
 
 const ORCHESTRATOR_MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 4096;
-const TOKEN_LIMIT = 200_000;
+// Runaway-safety net only — NOT the real budget. The dollar daily cap
+// (isDailyBudgetExhausted) is the actual spend governor; this breaker exists
+// purely to kill a pathological loop (e.g. the model wedged in a tool-call
+// cycle) before it can rack up unbounded fresh tokens. Set high enough that a
+// healthy run never trips it. Counts input+output+cache_creation (excludes
+// cache_read), checked before each model call; trip → finalize budget_exhausted.
+const TOKEN_LIMIT = 500_000;
 const MAX_ITERATIONS = 30; // safety net separate from the token breaker
 
 // approximate; confirm against current Anthropic pricing
@@ -39,7 +45,10 @@ const PRICE = {
 const TOOL_PROTOCOL = `
 
 # ПРОТОКОЛ РАБОТЫ С КАРТОЧКАМИ (cardId)
-Каждому кандидату-клубу присвой короткий стабильный cardId — слаг из названия (например "olymp-swim", "barys-chess"). Используй ОДИН И ТОТ ЖЕ cardId для этого клуба во ВСЕХ вызовах: emit_card_update → extract_fields → draft_outreach. Никогда не меняй cardId одного и того же клуба между вызовами — иначе создашь дубликаты карточек. cardId передаётся как вход в каждый из этих инструментов.`;
+Каждому кандидату-клубу присвой короткий стабильный cardId — слаг из названия (например "olymp-swim", "barys-chess"). Используй ОДИН И ТОТ ЖЕ cardId для этого клуба во ВСЕХ вызовах: emit_card_update → extract_fields → draft_outreach. Никогда не меняй cardId одного и того же клуба между вызовами — иначе создашь дубликаты карточек. cardId передаётся как вход в каждый из этих инструментов.
+
+# ПРОТОКОЛ ЗАГРУЗКИ И ИЗВЛЕЧЕНИЯ (fetch_url → extract_fields)
+Сначала вызови fetch_url(url), чтобы загрузить страницу — он вернёт только КВИТАНЦИЮ { ok, url, chars, preview }, а НЕ полный текст. ЗАТЕМ вызови extract_fields(cardId, name, url) с ТЕМ ЖЕ url — extract_fields сам прочитает текст той страницы, которую ты загрузил через fetch_url. Никогда не ожидай, что fetch_url вернёт полный текст страницы, и не передавай текст в extract_fields — он берётся из загруженной страницы по url.`;
 
 function utcNow(): number {
   return Math.floor(Date.now() / 1000);
