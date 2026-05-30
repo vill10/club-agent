@@ -14,7 +14,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
-import { tools } from "@/lib/agent/tools";
+import { tools, clearRunEnrichment } from "@/lib/agent/tools";
 import { SYSTEM_PROMPT, buildIntentBlock } from "@/lib/agent/playbook";
 import { appendEvent, setRunStatus, getCards } from "@/lib/db-queries";
 import { emitRunEvent, closeRunBus } from "@/lib/events";
@@ -228,6 +228,7 @@ export async function runAgent(
     const msg = err instanceof Error ? err.message : String(err);
     emit(runId, "error", { kind: "error", message: msg, fatal: true });
     setRunStatus(runId, "failed", utcNow(), runCost);
+    clearRunEnrichment(runId);
     closeRunBus(runId);
     return;
   }
@@ -250,5 +251,6 @@ export async function runAgent(
     setRunStatus(runId, "complete", utcNow(), runCost);
   }
   emit(runId, "final", { kind: "final", cardCount });
+  clearRunEnrichment(runId);
   closeRunBus(runId);
 }

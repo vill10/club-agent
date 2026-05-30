@@ -25,6 +25,21 @@ export interface ToolContext {
   runId: string;
 }
 
+// ── Deep-enrichment cap ───────────────────────────────────────────────────────
+// Cost backstop: deep enrichment (fetch_url + the Haiku call inside
+// extract_fields) is the expensive part of a run. We cap it at MAX_ENRICH
+// distinct cards per run, independent of model compliance with the playbook.
+// enrichedByRun tracks which cardIds have already been enriched per run; once a
+// run hits the cap, further first-time enrichments are skipped (re-enriching an
+// already-enriched card is still allowed). `clearRunEnrichment` MUST be called
+// at run finalization so this map doesn't accumulate across runs.
+const MAX_ENRICH = 6;
+const enrichedByRun = new Map<string, Set<string>>();
+
+export function clearRunEnrichment(runId: string): void {
+  enrichedByRun.delete(runId);
+}
+
 export interface Tool<I> {
   name: string;
   description: string;
@@ -265,6 +280,24 @@ const extractFieldsTool: Tool<{
   }),
   async handler({ cardId, name, rawText, sourceUrl }, { runId }) {
     emitCall(runId, "extract_fields", `Извлечение полей: ${name}`);
+
+    // Backstop: enforce the deep-enrichment cap regardless of model behaviour.
+    // New cards beyond MAX_ENRICH are skipped (no Haiku call); already-enriched
+    // cards may be re-enriched freely.
+    let enriched = enrichedByRun.get(runId);
+    if (!enriched) {
+      enriched = new Set<string>();
+      enrichedByRun.set(runId, enriched);
+    }
+    if (!enriched.has(cardId) && enriched.size >= MAX_ENRICH) {
+      emitResult(
+        runId,
+        "extract_fields",
+        `Пропуск (лимит обогащения ${MAX_ENRICH}): ${name}`,
+      );
+      return { skipped: true, reason: "enrichment limit reached" };
+    }
+    enriched.add(cardId);
 
     const user = `Название клуба: ${name}\nИсточник (URL): ${sourceUrl}\n\nТекст страницы:\n${rawText.slice(0, MAX_TEXT_CHARS)}`;
     const fallback: Extraction = { contacts: [] };
