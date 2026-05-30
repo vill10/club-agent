@@ -68,9 +68,36 @@ const globalForDb = globalThis as unknown as {
   __clubAgentDb?: Database.Database;
 };
 
-export const db: Database.Database =
-  globalForDb.__clubAgentDb ?? createConnection();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__clubAgentDb = db;
+// Lazily resolve the real connection. The first call opens it (running pragmas
+// + schema exactly once) and memoizes it on globalThis; subsequent calls reuse
+// the cached handle. Importantly, NOTHING here runs at import time — so when
+// `next build` evaluates route modules in parallel workers, merely importing
+// `db` never touches the WAL file (eliminating the build-time SQLITE_BUSY race).
+function getConnection(): Database.Database {
+  if (globalForDb.__clubAgentDb) return globalForDb.__clubAgentDb;
+  const connection = createConnection();
+  // Cache in every environment: in prod the module is evaluated once per worker
+  // and we still want a single handle for the process lifetime; in dev it lets
+  // hot-reload reuse the handle across reloads.
+  globalForDb.__clubAgentDb = connection;
+  return connection;
 }
+
+// Export `db` as a Proxy so every existing caller (`db.prepare(...)`,
+// `db.exec(...)`, `db.transaction(...)`, etc.) keeps working unchanged. Each
+// property access / call is forwarded to the lazily-opened real Database.
+export const db: Database.Database = new Proxy({} as Database.Database, {
+  get(_target, prop, receiver) {
+    const conn = getConnection();
+    const value = Reflect.get(conn, prop, receiver);
+    // Bind methods to the real connection so `this` is correct when invoked
+    // (better-sqlite3 methods rely on their internal `this`).
+    return typeof value === "function" ? value.bind(conn) : value;
+  },
+  set(_target, prop, value) {
+    return Reflect.set(getConnection(), prop, value);
+  },
+  has(_target, prop) {
+    return Reflect.has(getConnection(), prop);
+  },
+});
