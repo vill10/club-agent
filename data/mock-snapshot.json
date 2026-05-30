@@ -1,0 +1,164 @@
+{
+  "run": {
+    "id": "mock_run_01",
+    "createdAt": 1748600000,
+    "rawQuery": "плавание для дочки 8 лет, левый берег, вечером",
+    "intent": {
+      "category": { "value": "sport", "present": true, "confidence": "high" },
+      "age": { "value": "8", "present": true, "confidence": "high" },
+      "district": { "value": "Левый берег", "present": true, "confidence": "medium" },
+      "budget": { "value": "≤30000₸/мес", "present": true, "confidence": "low" },
+      "schedule": { "value": "вечером, будни", "present": true, "confidence": "medium" },
+      "hardRequirements": { "value": ["тренер-женщина"], "present": true, "confidence": "low" }
+    },
+    "status": "complete",
+    "finishedAt": 1748600420,
+    "costUsd": 0.62
+  },
+  "events": [
+    { "id": 1, "runId": "mock_run_01", "ts": 1748600002, "kind": "message", "payload": { "kind": "message", "text": "Разбираю запрос: плавание, девочка 8 лет, левый берег Астаны, вечерние занятия." } },
+    { "id": 2, "runId": "mock_run_01", "ts": 1748600005, "kind": "tool_call", "payload": { "kind": "tool_call", "tool": "search_web", "label": "Ищу детские секции плавания в Астане на левом берегу" } },
+    { "id": 3, "runId": "mock_run_01", "ts": 1748600011, "kind": "tool_result", "payload": { "kind": "tool_result", "tool": "search_web", "label": "Нашёл страницы по бассейнам и школам плавания", "count": 9 } },
+    { "id": 4, "runId": "mock_run_01", "ts": 1748600014, "kind": "tool_call", "payload": { "kind": "tool_call", "tool": "query_2gis", "label": "Смотрю 2ГИС: бассейны и секции плавания, левый берег" } },
+    { "id": 5, "runId": "mock_run_01", "ts": 1748600020, "kind": "tool_result", "payload": { "kind": "tool_result", "tool": "query_2gis", "label": "2ГИС вернул организации с адресами и телефонами", "count": 12 } },
+    { "id": 6, "runId": "mock_run_01", "ts": 1748600023, "kind": "tool_call", "payload": { "kind": "tool_call", "tool": "query_google_places", "label": "Сверяю рейтинги и контакты в Google Places" } },
+    { "id": 7, "runId": "mock_run_01", "ts": 1748600029, "kind": "tool_result", "payload": { "kind": "tool_result", "tool": "query_google_places", "label": "Получил рейтинги и часы работы", "count": 7 } },
+    { "id": 8, "runId": "mock_run_01", "ts": 1748600033, "kind": "tool_call", "payload": { "kind": "tool_call", "tool": "fetch_url", "label": "Открываю сайт школы плавания «Дельфин»" } },
+    { "id": 9, "runId": "mock_run_01", "ts": 1748600039, "kind": "tool_result", "payload": { "kind": "tool_result", "tool": "fetch_url", "label": "Загрузил страницу с расписанием и ценами" } },
+    { "id": 10, "runId": "mock_run_01", "ts": 1748600042, "kind": "tool_call", "payload": { "kind": "tool_call", "tool": "extract_fields", "label": "Извлекаю расписание, цены и возрастные группы" } },
+    { "id": 11, "runId": "mock_run_01", "ts": 1748600047, "kind": "tool_result", "payload": { "kind": "tool_result", "tool": "extract_fields", "label": "Поля извлечены по 5 организациям", "count": 5 } },
+    { "id": 12, "runId": "mock_run_01", "ts": 1748600051, "kind": "card_update", "payload": { "kind": "card_update", "cardId": "card_01" } },
+    { "id": 13, "runId": "mock_run_01", "ts": 1748600055, "kind": "card_update", "payload": { "kind": "card_update", "cardId": "card_02" } },
+    { "id": 14, "runId": "mock_run_01", "ts": 1748600060, "kind": "tool_call", "payload": { "kind": "tool_call", "tool": "fetch_url", "label": "Открываю Instagram «Aqua Kids»" } },
+    { "id": 15, "runId": "mock_run_01", "ts": 1748600066, "kind": "tool_result", "payload": { "kind": "tool_result", "tool": "fetch_url", "label": "Загрузил профиль, нашёл Telegram для записи" } },
+    { "id": 16, "runId": "mock_run_01", "ts": 1748600071, "kind": "message", "payload": { "kind": "message", "text": "Уточняю контакты и расписание по оставшимся секциям." } },
+    { "id": 17, "runId": "mock_run_01", "ts": 1748600075, "kind": "card_update", "payload": { "kind": "card_update", "cardId": "card_03" } },
+    { "id": 18, "runId": "mock_run_01", "ts": 1748600079, "kind": "card_update", "payload": { "kind": "card_update", "cardId": "card_04" } },
+    { "id": 19, "runId": "mock_run_01", "ts": 1748600083, "kind": "card_update", "payload": { "kind": "card_update", "cardId": "card_05" } },
+    { "id": 20, "runId": "mock_run_01", "ts": 1748600088, "kind": "card_update", "payload": { "kind": "card_update", "cardId": "card_06" } },
+    { "id": 21, "runId": "mock_run_01", "ts": 1748600092, "kind": "final", "payload": { "kind": "final", "cardCount": 6 } }
+  ],
+  "cards": [
+    {
+      "id": "card_01",
+      "runId": "mock_run_01",
+      "name": "Школа плавания «Дельфин»",
+      "district": { "value": "Есиль (левый берег)", "confidence": "high", "sourceSnippet": "Расположены в ЖК на левом берегу, ул. Сыганак 25." },
+      "address": { "value": "ул. Сыганак, 25, Астана", "confidence": "high" },
+      "contacts": [
+        { "channel": "telegram", "value": "@delfin_swim_astana", "confidence": "high", "source": "https://t.me/delfin_swim_astana" },
+        { "channel": "phone", "value": "+7 701 234 56 78", "confidence": "high", "source": "https://2gis.kz/astana/firm/delfin" },
+        { "channel": "website", "value": "https://delfin-swim.kz", "confidence": "high" }
+      ],
+      "schedule": { "value": "Пн/Ср/Пт 18:00–19:00 (группа 7–9 лет)", "confidence": "high", "sourceSnippet": "Вечерние группы для младших школьников: пн, ср, пт в 18:00." },
+      "priceRange": { "value": "28000₸/мес (8 занятий)", "confidence": "high" },
+      "ageRange": { "value": "5–12 лет", "confidence": "high" },
+      "matchReason": "Вечерние группы для детей 7–9 лет на левом берегу, цена в рамках бюджета. Есть тренер-женщина в младших группах.",
+      "draftMessage": "Здравствуйте! Ищу секцию плавания для дочки 8 лет на левом берегу, удобно по будням вечером. Подскажите, есть ли места в вечерней группе и можно ли записаться к тренеру-женщине? Спасибо!",
+      "rank": 1,
+      "sources": [
+        "https://delfin-swim.kz",
+        "https://2gis.kz/astana/firm/delfin",
+        "https://t.me/delfin_swim_astana"
+      ]
+    },
+    {
+      "id": "card_02",
+      "runId": "mock_run_01",
+      "name": "Aqua Kids — детский плавательный клуб",
+      "district": { "value": "Есиль (левый берег)", "confidence": "high", "sourceSnippet": "Бассейн в ТРЦ на левом берегу, отдельные детские дорожки." },
+      "address": { "value": "пр. Туран, 37, Астана", "confidence": "high" },
+      "contacts": [
+        { "channel": "instagram", "value": "@aquakids.astana", "confidence": "high", "source": "https://instagram.com/aquakids.astana" },
+        { "channel": "telegram", "value": "@aquakids_zapis", "confidence": "medium", "source": "https://instagram.com/aquakids.astana" },
+        { "channel": "phone", "value": "+7 705 987 65 43", "confidence": "medium" }
+      ],
+      "schedule": { "value": "Вт/Чт 17:30 и 19:00", "confidence": "medium", "sourceSnippet": "Детские группы по вторникам и четвергам, время уточняется при записи." },
+      "priceRange": { "value": "30000₸/мес", "confidence": "medium" },
+      "ageRange": { "value": "6–10 лет", "confidence": "high" },
+      "matchReason": "Профильный детский клуб, возраст и левый берег совпадают. Вечерние слоты есть, но точное время нужно уточнить.",
+      "draftMessage": "Добрый день! Интересует плавание для дочки 8 лет, живём на левом берегу. Подскажите расписание вечерних детских групп и стоимость абонемента на месяц?",
+      "rank": 2,
+      "sources": [
+        "https://instagram.com/aquakids.astana",
+        "https://2gis.kz/astana/firm/aquakids"
+      ]
+    },
+    {
+      "id": "card_03",
+      "runId": "mock_run_01",
+      "name": "СК «Жулдыз» — секция плавания",
+      "district": { "value": "Левый берег", "confidence": "medium", "sourceSnippet": "Спорткомплекс рядом с набережной, точный район по карте уточняется." },
+      "address": { "value": "ул. Кабанбай батыра, 60", "confidence": "medium" },
+      "contacts": [
+        { "channel": "phone", "value": "+7 717 222 11 00", "confidence": "high", "source": "https://2gis.kz/astana/firm/zhuldyz" },
+        { "channel": "whatsapp", "value": "+7 747 222 11 00", "confidence": "medium" }
+      ],
+      "schedule": { "value": "Пн–Пт, вечерние смены 17:00–20:00", "confidence": "low", "sourceSnippet": "Работают до 20:00, расписание детских групп по запросу." },
+      "priceRange": { "value": "около 22000₸/мес", "confidence": "low", "sourceSnippet": "Цена указана за прошлый сезон, актуальную уточняйте." },
+      "ageRange": { "value": "7–14 лет", "confidence": "medium" },
+      "matchReason": "Бюджетный вариант на левом берегу с вечерними сменами. Данные о детских группах и цене требуют уточнения.",
+      "draftMessage": "Здравствуйте! Подскажите, есть ли набор в детскую группу плавания (девочка 8 лет) на вечернее время, и сколько стоит абонемент на месяц?",
+      "rank": 3,
+      "sources": [
+        "https://2gis.kz/astana/firm/zhuldyz"
+      ]
+    },
+    {
+      "id": "card_04",
+      "runId": "mock_run_01",
+      "name": "Фитнес-центр «Vita» (бассейн)",
+      "district": { "value": "Есиль (левый берег)", "confidence": "high" },
+      "address": { "value": "пр. Мангилик Ел, 14", "confidence": "high" },
+      "contacts": [
+        { "channel": "website", "value": "https://vita-fitness.kz", "confidence": "high" },
+        { "channel": "phone", "value": "+7 717 000 22 33", "confidence": "high", "source": "https://vita-fitness.kz/contacts" }
+      ],
+      "schedule": { "value": "Детская группа Пн/Ср 18:30", "confidence": "medium" },
+      "priceRange": { "value": "35000₸/мес", "confidence": "high", "sourceSnippet": "Абонемент на детское плавание — 35 000 ₸ в месяц." },
+      "ageRange": { "value": "8–15 лет", "confidence": "high" },
+      "matchReason": "Подходит по возрасту и расположению, но цена немного выше указанного бюджета.",
+      "rank": 4,
+      "sources": [
+        "https://vita-fitness.kz",
+        "https://vita-fitness.kz/contacts"
+      ]
+    },
+    {
+      "id": "card_05",
+      "runId": "mock_run_01",
+      "name": "Школа «Swim Star»",
+      "district": { "value": "Левый берег", "confidence": "low", "sourceSnippet": "Адрес указан в соцсетях неточно, требует подтверждения." },
+      "contacts": [
+        { "channel": "instagram", "value": "@swimstar.kz", "confidence": "medium", "source": "https://instagram.com/swimstar.kz" }
+      ],
+      "schedule": { "value": "Вечерние группы, дни уточняются", "confidence": "low" },
+      "priceRange": { "value": "нет данных", "confidence": "low" },
+      "ageRange": { "value": "6–12 лет", "confidence": "medium" },
+      "matchReason": "Профиль детского плавания, но контактов и расписания мало — нужно писать в Instagram для деталей.",
+      "rank": 5,
+      "sources": [
+        "https://instagram.com/swimstar.kz"
+      ]
+    },
+    {
+      "id": "card_06",
+      "runId": "mock_run_01",
+      "name": "Бассейн ФОК «Алау» (детские группы)",
+      "district": { "value": "Левый берег, у набережной", "confidence": "medium" },
+      "address": { "value": "ул. Достык, 5", "confidence": "low", "sourceSnippet": "Адрес по данным 2ГИС, вход со стороны набережной." },
+      "contacts": [
+        { "channel": "phone", "value": "+7 717 555 44 33", "confidence": "medium", "source": "https://2gis.kz/astana/firm/alau" },
+        { "channel": "whatsapp", "value": "+7 700 555 44 33", "confidence": "low" }
+      ],
+      "schedule": { "value": "Сб/Вс утро, будни вечер по записи", "confidence": "low" },
+      "priceRange": { "value": "25000₸/мес", "confidence": "low" },
+      "ageRange": { "value": "7–16 лет", "confidence": "low" },
+      "matchReason": "Большой бассейн на левом берегу, цена в бюджете. Расписание вечерних детских групп нестабильно — стоит уточнить по телефону.",
+      "rank": 6,
+      "sources": [
+        "https://2gis.kz/astana/firm/alau"
+      ]
+    }
+  ]
+}
