@@ -3,6 +3,8 @@ interface GooglePlace {
   formattedAddress?: string;
   id?: string;
   location?: { latitude?: number; longitude?: number };
+  nationalPhoneNumber?: string;
+  websiteUri?: string;
 }
 
 export async function searchPlaces(
@@ -13,6 +15,8 @@ export async function searchPlaces(
     address: string;
     placeId: string;
     location: { lat: number; lng: number } | null;
+    phone?: string;
+    website?: string;
   }[]
 > {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -24,7 +28,7 @@ export async function searchPlaces(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "places.displayName,places.formattedAddress,places.id,places.location",
+        "places.displayName,places.formattedAddress,places.id,places.location,places.nationalPhoneNumber,places.websiteUri",
     },
     body: JSON.stringify({
       textQuery: query,
@@ -47,11 +51,20 @@ export async function searchPlaces(
     const lat = p.location?.latitude;
     const lng = p.location?.longitude;
     const hasLocation = typeof lat === "number" && typeof lng === "number";
+    // Defensive: phone/website fields may be absent on any given place.
+    const phone =
+      typeof p.nationalPhoneNumber === "string" && p.nationalPhoneNumber
+        ? p.nationalPhoneNumber
+        : undefined;
+    const website =
+      typeof p.websiteUri === "string" && p.websiteUri ? p.websiteUri : undefined;
     return {
       name: p.displayName?.text ?? "",
       address: p.formattedAddress ?? "",
       placeId: p.id ?? "",
       location: hasLocation ? { lat, lng } : null,
+      ...(phone ? { phone } : {}),
+      ...(website ? { website } : {}),
     };
   });
 }
