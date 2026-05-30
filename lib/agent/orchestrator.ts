@@ -82,8 +82,15 @@ function tokensFromUsage(usage: Anthropic.Usage): number {
   );
 }
 
-export async function runAgent(runId: string, intent: Intent): Promise<void> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// `client` is injectable purely for offline testing; defaults to a real
+// Anthropic client built from the env key. Production callers pass one arg.
+export async function runAgent(
+  runId: string,
+  intent: Intent,
+  client: Pick<Anthropic, "messages"> = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  }),
+): Promise<void> {
 
   // ── Build the Anthropic tools param from the registry ─────────────────────
   // cache_control on the LAST tool caches the entire tools prefix.
@@ -129,12 +136,17 @@ export async function runAgent(runId: string, intent: Intent): Promise<void> {
   let runTokens = 0;
   let runCost = 0;
   let stopReason: "complete" | "budget" = "complete";
+  // True only if the loop exits a natural way (end_turn / stop_sequence / budget
+  // breaker). Stays false if we fall through because the iteration cap was hit,
+  // which lets us flag the run as truncated below.
+  let endedCleanly = false;
 
   try {
     for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
       // BEFORE each model call: budget / token circuit-breaker.
       if (isDailyBudgetExhausted() || runTokens > TOKEN_LIMIT) {
         stopReason = "budget";
+        endedCleanly = true;
         break;
       }
 
@@ -197,7 +209,19 @@ export async function runAgent(runId: string, intent: Intent): Promise<void> {
         continue;
       }
 
-      // end_turn / max_tokens / stop_sequence → the agent is done.
+      if (response.stop_reason === "max_tokens") {
+        // The model hit the 4096-token output ceiling mid-turn — this is NOT a
+        // clean finish; it may have been about to call a tool. Keep the partial
+        // assistant turn, nudge it to continue, and loop. This counts toward
+        // MAX_ITERATIONS and the token breaker, so it can't spin forever; a
+        // persistent max_tokens run finalizes via the iteration-cap path below.
+        messages.push({ role: "assistant", content: response.content });
+        messages.push({ role: "user", content: "Продолжай." });
+        continue;
+      }
+
+      // end_turn / stop_sequence → the agent is genuinely done.
+      endedCleanly = true;
       break;
     }
   } catch (err) {
@@ -213,6 +237,16 @@ export async function runAgent(runId: string, intent: Intent): Promise<void> {
   if (stopReason === "budget") {
     setRunStatus(runId, "budget_exhausted", utcNow(), runCost);
   } else {
+    // If we fell out of the loop because the iteration cap was hit (rather than
+    // a natural end_turn), the run was forcibly truncated. We still report
+    // terminal "complete" (it produced cards), but emit a message event first
+    // so the truncation isn't silent and the user knows results may be partial.
+    if (!endedCleanly) {
+      emit(runId, "message", {
+        kind: "message",
+        text: "Достигнут предел шагов поиска — показаны частичные результаты.",
+      });
+    }
     setRunStatus(runId, "complete", utcNow(), runCost);
   }
   emit(runId, "final", { kind: "final", cardCount });
