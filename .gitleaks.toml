@@ -1,0 +1,6 @@
+# gitleaks config — uses the bundled default ruleset.
+# https://github.com/gitleaks/gitleaks
+title = "club-agent gitleaks config"
+
+[extend]
+useDefault = true
