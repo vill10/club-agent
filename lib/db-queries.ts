@@ -203,6 +203,13 @@ export function getRun(id: string): Run | null {
   return row ? rowToRun(row) : null;
 }
 
+// `finished_at` and `cost_usd` are WRITE-STICKY: the prepared statement uses
+// COALESCE(@param, column), so omitting them (passing `undefined`, which maps
+// to SQL NULL here) PRESERVES the prior value rather than nulling it. This is
+// intentional — callers always supply both at terminal transitions and never
+// need to reset either back to null via this function, so there is no way to
+// clear them once set. Falsy-but-defined values are written normally:
+// cost_usd: 0 yields COALESCE(0, column) = 0, so 0 is stored correctly.
 export function setRunStatus(
   id: string,
   status: RunStatus,
@@ -259,13 +266,22 @@ export function upsertCard(
     ? (JSON.parse(existing.fields_json) as FieldsBlob)
     : {};
 
+  // A field is "provided" iff its key is present AND its value is not
+  // `undefined`. Callers build partial Cards via spreads that can carry an
+  // explicit `undefined` ("key present, no value") — that must be treated as
+  // "not provided" so it never clobbers an existing column or fields_json
+  // entry. Guard on `!== undefined` (NOT truthiness) so legitimate falsy
+  // values like rank: 0 / "" still get written.
+  const provided = (key: keyof Card): boolean =>
+    key in card && card[key] !== undefined;
+
   const fields: FieldsBlob = { ...existingFields };
-  if ("district" in card && card.district) fields.district = card.district;
-  if ("address" in card && card.address) fields.address = card.address;
-  if ("schedule" in card && card.schedule) fields.schedule = card.schedule;
-  if ("priceRange" in card && card.priceRange) fields.priceRange = card.priceRange;
-  if ("ageRange" in card && card.ageRange) fields.ageRange = card.ageRange;
-  if ("sources" in card && card.sources) fields.__sources = card.sources;
+  if (provided("district")) fields.district = card.district;
+  if (provided("address")) fields.address = card.address;
+  if (provided("schedule")) fields.schedule = card.schedule;
+  if (provided("priceRange")) fields.priceRange = card.priceRange;
+  if (provided("ageRange")) fields.ageRange = card.ageRange;
+  if (provided("sources")) fields.__sources = card.sources;
 
   // Build the column set dynamically so an update only touches provided keys.
   // For an insert we always supply the full row (existing === undefined),
@@ -277,19 +293,19 @@ export function upsertCard(
     fields_json: JSON.stringify(fields),
   };
 
-  if ("district" in card) cols.district = card.district?.value ?? null;
-  if ("address" in card) cols.address = card.address?.value ?? null;
-  if ("priceRange" in card) cols.price_range = card.priceRange?.value ?? null;
-  if ("ageRange" in card) cols.age_range = card.ageRange?.value ?? null;
-  if ("schedule" in card) {
+  if (provided("district")) cols.district = card.district?.value ?? null;
+  if (provided("address")) cols.address = card.address?.value ?? null;
+  if (provided("priceRange")) cols.price_range = card.priceRange?.value ?? null;
+  if (provided("ageRange")) cols.age_range = card.ageRange?.value ?? null;
+  if (provided("schedule")) {
     cols.schedule_json = card.schedule ? JSON.stringify(card.schedule) : null;
   }
-  if ("contacts" in card) {
+  if (provided("contacts")) {
     cols.contacts_json = card.contacts ? JSON.stringify(card.contacts) : null;
   }
-  if ("matchReason" in card) cols.match_reason = card.matchReason ?? null;
-  if ("draftMessage" in card) cols.draft_message = card.draftMessage ?? null;
-  if ("rank" in card) cols.rank = card.rank ?? null;
+  if (provided("matchReason")) cols.match_reason = card.matchReason ?? null;
+  if (provided("draftMessage")) cols.draft_message = card.draftMessage ?? null;
+  if (provided("rank")) cols.rank = card.rank ?? null;
 
   const keys = Object.keys(cols);
   const insertCols = keys.join(", ");
