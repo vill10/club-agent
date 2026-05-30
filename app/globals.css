@@ -220,3 +220,33 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Design-token TEXT utilities (DESIGN.md contract) ────────────────── */
+/* `text-muted` / `text-faint` must resolve to the DESIGN.md TEXT colors,  */
+/* not shadcn's `--muted` (a surface/background token). Tailwind's theme    */
+/* namespace maps `text-muted` → `--color-muted` (= --surface in dark, a    */
+/* near-bg color → unreadable) and emits NO rule for `text-faint` (there    */
+/* is no `--color-faint`). We anchor these overrides to the theme root      */
+/* (`:where(html)`, which carries `.dark`) so they (a) raise specificity    */
+/* enough to beat Tailwind's single-class utilities and (b) carry a         */
+/* distinct selector the CSS minifier won't merge away — covering the       */
+/* base + hover + placeholder variants the app uses. shadcn's `bg-muted` /  */
+/* `text-muted-foreground` keep reading `--muted` / `--muted-foreground`    */
+/* untouched (we never redefine those). `:where(html)` adds 0 specificity   */
+/* itself, so the class still controls; the compound class+pseudo wins on   */
+/* source order against the equal-specificity Tailwind utility.            */
+html .text-muted {
+  color: var(--text-muted);
+}
+html .text-faint {
+  color: var(--text-faint);
+}
+html .hover\:text-muted:hover {
+  color: var(--text-muted);
+}
+html .placeholder\:text-muted::placeholder {
+  color: var(--text-muted);
+}
+html .placeholder\:text-faint::placeholder {
+  color: var(--text-faint);
+}
