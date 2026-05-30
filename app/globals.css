@@ -180,7 +180,36 @@
   }
 }
 
-/* Honor reduced-motion: neutralize all animation + transition. */
+/* ── Activity stream (F.4) ───────────────────────────────────────────── */
+/* Signature entrance: new rows slide up + fade in. transform/opacity only. */
+@keyframes cl-activity-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cl-activity-row {
+  animation: cl-activity-in 240ms ease-out both;
+}
+
+/* In-flight tool spinner. */
+@keyframes cl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cl-spinner {
+  animation: cl-spin 0.7s linear infinite;
+}
+
+/* Honor reduced-motion: neutralize all animation + transition.            */
+/* The blanket override below also defuses cl-activity-in / cl-spin.       */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
