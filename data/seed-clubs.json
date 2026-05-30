@@ -1,0 +1,160 @@
+[
+  {
+    "name": "Спортивный клуб «Барс»",
+    "category": "sport",
+    "district": "Есиль",
+    "contacts": [
+      { "channel": "phone", "value": "+7 701 234 56 78" },
+      { "channel": "instagram", "value": "@bars.astana" }
+    ],
+    "note": "Секции дзюдо и борьбы для детей 6–14 лет. Утренние и вечерние группы."
+  },
+  {
+    "name": "Школа плавания «Дельфин»",
+    "category": "sport",
+    "district": "Алматы",
+    "contacts": [
+      { "channel": "whatsapp", "value": "+7 702 345 67 89" },
+      { "channel": "website", "value": "https://delfin-swim.kz" }
+    ],
+    "note": "Группы с 4 лет, есть бассейн с подогревом. Пробное занятие бесплатно."
+  },
+  {
+    "name": "Футбольная академия «Астана Юниор»",
+    "category": "sport",
+    "district": "Сарыарка",
+    "contacts": [
+      { "channel": "telegram", "value": "@astana_junior" },
+      { "channel": "phone", "value": "+7 705 111 22 33" }
+    ],
+    "note": "Тренировки на крытом поле круглый год. Возраст 5–12."
+  },
+  {
+    "name": "Художественная студия «Палитра»",
+    "category": "art",
+    "district": "Есиль",
+    "contacts": [
+      { "channel": "instagram", "value": "@palitra.kids" },
+      { "channel": "phone", "value": "+7 700 998 76 54" }
+    ],
+    "note": "Рисунок, акварель и лепка. Маленькие группы до 8 человек."
+  },
+  {
+    "name": "Керамическая мастерская «Глина»",
+    "category": "art",
+    "district": "Байконыр",
+    "contacts": [
+      { "channel": "whatsapp", "value": "+7 707 654 32 10" }
+    ],
+    "note": "Гончарный круг и роспись для детей от 7 лет. Занятия по выходным."
+  },
+  {
+    "name": "Музыкальная школа «Аккорд»",
+    "category": "music",
+    "district": "Алматы",
+    "contacts": [
+      { "channel": "phone", "value": "+7 701 777 88 99" },
+      { "channel": "website", "value": "https://akkord-music.kz" }
+    ],
+    "note": "Фортепиано, гитара, вокал. Индивидуальные занятия от 5 лет."
+  },
+  {
+    "name": "Студия барабанов «Ритм»",
+    "category": "music",
+    "district": "Сарыарка",
+    "contacts": [
+      { "channel": "instagram", "value": "@ritm.drums" },
+      { "channel": "telegram", "value": "@ritm_astana" }
+    ],
+    "note": "Ударные и перкуссия. Звукоизолированные классы, аренда инструментов."
+  },
+  {
+    "name": "Языковой центр «Lingua»",
+    "category": "language",
+    "district": "Есиль",
+    "contacts": [
+      { "channel": "whatsapp", "value": "+7 702 222 33 44" },
+      { "channel": "website", "value": "https://lingua-astana.kz" }
+    ],
+    "note": "Английский и казахский для детей 6–16. Тестирование уровня бесплатно."
+  },
+  {
+    "name": "Школа английского «Bright Kids»",
+    "category": "language",
+    "district": "Байконыр",
+    "contacts": [
+      { "channel": "phone", "value": "+7 705 333 44 55" },
+      { "channel": "instagram", "value": "@brightkids.kz" }
+    ],
+    "note": "Игровой формат для дошкольников, разговорные клубы для школьников."
+  },
+  {
+    "name": "Школа программирования «CodeKids»",
+    "category": "coding",
+    "district": "Алматы",
+    "contacts": [
+      { "channel": "telegram", "value": "@codekids_ast" },
+      { "channel": "website", "value": "https://codekids.kz" }
+    ],
+    "note": "Scratch, Python и робототехника. Группы 8–15 лет, есть онлайн-формат."
+  },
+  {
+    "name": "Робототехника «Робо Лаб»",
+    "category": "coding",
+    "district": "Сарыарка",
+    "contacts": [
+      { "channel": "phone", "value": "+7 700 444 55 66" },
+      { "channel": "whatsapp", "value": "+7 700 444 55 66" }
+    ],
+    "note": "Конструирование роботов и основы инженерии. От 7 лет."
+  },
+  {
+    "name": "Танцевальная студия «Грация»",
+    "category": "dance",
+    "district": "Есиль",
+    "contacts": [
+      { "channel": "instagram", "value": "@gracia.dance" },
+      { "channel": "phone", "value": "+7 701 555 66 77" }
+    ],
+    "note": "Хореография, балет и современные танцы. Возраст с 4 лет."
+  },
+  {
+    "name": "Школа хип-хопа «Move»",
+    "category": "dance",
+    "district": "Байконыр",
+    "contacts": [
+      { "channel": "telegram", "value": "@move_dance_ast" }
+    ],
+    "note": "Hip-hop и брейкинг для детей и подростков. Открытые тренировки по пятницам."
+  },
+  {
+    "name": "Шахматный клуб «Гамбит»",
+    "category": "chess",
+    "district": "Алматы",
+    "contacts": [
+      { "channel": "phone", "value": "+7 702 666 77 88" },
+      { "channel": "website", "value": "https://gambit-chess.kz" }
+    ],
+    "note": "Группы по уровням и подготовка к турнирам. От 5 лет."
+  },
+  {
+    "name": "Шахматная школа «Ладья»",
+    "category": "chess",
+    "district": "Сарыарка",
+    "contacts": [
+      { "channel": "whatsapp", "value": "+7 705 888 99 00" },
+      { "channel": "instagram", "value": "@ladya.chess" }
+    ],
+    "note": "Индивидуальные и групповые занятия. Тренеры с разрядами."
+  },
+  {
+    "name": "Детский центр «Алтын Бала»",
+    "category": "other",
+    "district": "Байконыр",
+    "contacts": [
+      { "channel": "phone", "value": "+7 700 121 23 45" },
+      { "channel": "instagram", "value": "@altyn.bala" }
+    ],
+    "note": "Раннее развитие и подготовка к школе. Несколько направлений в одном месте."
+  }
+]
