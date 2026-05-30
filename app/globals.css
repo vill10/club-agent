@@ -5,6 +5,26 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* ── Club Agent design tokens (DESIGN.md is the contract) ──────────── */
+  /* exposed so utilities like bg-bg / text-text / bg-accent resolve      */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-glow: var(--accent-glow);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+
+  --radius-pill: var(--radius-pill);
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -49,6 +69,25 @@
 }
 
 :root {
+  /* ── Club Agent design tokens — dark-first, never pure black/white ── */
+  --bg: oklch(0.18 0.02 290);
+  --surface: oklch(0.22 0.025 290);
+  --surface-raised: oklch(0.26 0.03 290);
+  --text: oklch(0.96 0.01 290);
+  --text-muted: oklch(0.72 0.015 290);
+  --text-faint: oklch(0.55 0.015 290);
+  --accent: oklch(0.62 0.19 295);
+  --accent-hover: oklch(0.68 0.19 295);
+  --accent-subtle: oklch(0.30 0.08 295);
+  --accent-glow: oklch(0.62 0.19 295 / 0.25);
+  --success: oklch(0.70 0.15 150);
+  --warning: oklch(0.78 0.14 75);
+  --error: oklch(0.65 0.18 25);
+
+  --radius-pill: 9999px;
+  --radius-card: 14px;
+  --radius-control: 10px;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,37 +123,38 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  /* shadcn semantic tokens mapped onto the Club Agent identity so the    */
+  /* existing shadcn/ui machinery inherits dark-violet by default.        */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--text);
+  --secondary: var(--surface);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface);
+  --muted-foreground: var(--text-muted);
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --border: oklch(0.32 0.02 290);
+  --input: oklch(0.32 0.02 290);
+  --ring: var(--accent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--text);
+  --sidebar-accent: var(--accent-subtle);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: oklch(0.32 0.02 290);
+  --sidebar-ring: var(--accent);
 }
 
 @layer base {
@@ -123,8 +163,31 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-weight: 400;
+    line-height: 1.6;
   }
   html {
     @apply font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+}
+
+/* Honor reduced-motion: neutralize all animation + transition. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
