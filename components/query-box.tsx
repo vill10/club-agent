@@ -4,7 +4,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { CreateRunResponse, Intent } from "@/types";
+import type { ExtractIntentResponse, Intent } from "@/types";
 
 // Cloudflare ALWAYS-PASS test sitekey — public, not a secret. Lets dev work
 // without a real key configured.
@@ -34,17 +34,25 @@ declare global {
   }
 }
 
-type Status = "idle" | "submitting" | "budget" | "rate_limited" | "error";
+type Status = "idle" | "submitting" | "error";
 
 export interface QueryBoxProps {
-  /** Fired on a successful run creation. */
-  onIntent: (runId: string, intent: Intent) => void;
+  /**
+   * Fired on successful intent extraction. Surfaces the raw query, the
+   * extracted intent, and the current Turnstile token so the parent can drive
+   * the chips → run step. The widget stays mounted; a fresh token is read on
+   * the run call.
+   */
+  onExtracted: (args: {
+    rawQuery: string;
+    intent: Intent;
+    turnstileToken: string;
+  }) => void;
 }
 
-export function QueryBox({ onIntent }: QueryBoxProps) {
+export function QueryBox({ onExtracted }: QueryBoxProps) {
   const [rawQuery, setRawQuery] = useState("");
   const [status, setStatus] = useState<Status>("idle");
-  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   const widgetRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -85,49 +93,42 @@ export function QueryBox({ onIntent }: QueryBoxProps) {
     if (query.length < 3 || status === "submitting") return;
 
     setStatus("submitting");
-    setRetryAfter(null);
 
     try {
-      const res = await fetch("/api/runs", {
+      // Step 1: extract intent only (cheap, no Turnstile). The run is created
+      // later, after the user confirms the chips.
+      const res = await fetch("/api/extract-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawQuery: query, turnstileToken: tokenRef.current }),
+        body: JSON.stringify({ rawQuery: query }),
       });
-
-      if (res.status === 429) {
-        const data = await res.json().catch(() => ({}));
-        setRetryAfter(typeof data?.retryAfter === "number" ? data.retryAfter : null);
-        setStatus("rate_limited");
-        resetWidget();
-        return;
-      }
 
       if (!res.ok) {
         setStatus("error");
-        resetWidget();
         return;
       }
 
-      const data = await res.json();
-
-      if (data?.budgetExhausted) {
-        setStatus("budget");
-        return;
-      }
-
-      const result = data as CreateRunResponse;
-      if (result?.runId && result?.intent) {
-        onIntent(result.runId, result.intent);
+      const data = (await res.json()) as ExtractIntentResponse;
+      if (data?.intent) {
+        setStatus("idle");
+        onExtracted({
+          rawQuery: query,
+          intent: data.intent,
+          turnstileToken: tokenRef.current,
+        });
         return;
       }
 
       setStatus("error");
-      resetWidget();
     } catch {
       setStatus("error");
-      resetWidget();
     }
   }
+
+  // Exposed via ref pattern is overkill here; the parent re-reads the token by
+  // keeping the widget mounted across steps. resetWidget remains available for
+  // the error path.
+  void resetWidget;
 
   const submitting = status === "submitting";
 
@@ -165,17 +166,6 @@ export function QueryBox({ onIntent }: QueryBoxProps) {
         </div>
       </div>
 
-      {status === "budget" && (
-        <p className="mt-3 text-sm text-warning">
-          Дневной лимит исчерпан, загляните завтра.
-        </p>
-      )}
-      {status === "rate_limited" && (
-        <p className="mt-3 text-sm text-warning">
-          Слишком много запросов, попробуйте позже
-          {retryAfter ? ` (примерно через ${Math.ceil(retryAfter / 60)} мин)` : ""}.
-        </p>
-      )}
       {status === "error" && (
         <p className="mt-3 text-sm text-error">
           Что-то пошло не так. Попробуйте ещё раз через минуту.

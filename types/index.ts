@@ -89,7 +89,14 @@ export interface Card {
 // ── API shapes ────────────────────────────────────────────
 export interface CreateRunRequest {
   rawQuery: string;
+  intent: Intent;            // confirmed intent from the chips step
   turnstileToken: string;
+}
+export interface ExtractIntentRequest {
+  rawQuery: string;
+}
+export interface ExtractIntentResponse {
+  intent: Intent;
 }
 export interface CreateRunResponse {
   runId: string;

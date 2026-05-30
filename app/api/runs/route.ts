@@ -4,15 +4,32 @@ import { z } from "zod";
 import { runAgent } from "@/lib/agent/orchestrator";
 import { isDailyBudgetExhausted, incRunsCount } from "@/lib/budget";
 import { createRun } from "@/lib/db-queries";
-import { extractIntent } from "@/lib/intent";
 import { hashIp, checkAndIncrement } from "@/lib/ratelimit";
 import { verifyTurnstile } from "@/lib/turnstile";
-import type { CreateRunResponse } from "@/types";
+import type { CreateRunResponse, Intent } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+// Structural check on the confirmed intent from the chips step. Each field is
+// an IntentField ({ value, present, confidence }); we keep this loose (the
+// intent is server-extracted then user-edited, not arbitrary input).
+const intentFieldSchema = z.object({
+  value: z.unknown().nullable(),
+  present: z.boolean(),
+  confidence: z.enum(["high", "medium", "low"]),
+});
+const intentSchema = z.object({
+  category: intentFieldSchema,
+  age: intentFieldSchema,
+  district: intentFieldSchema,
+  budget: intentFieldSchema,
+  schedule: intentFieldSchema,
+  hardRequirements: intentFieldSchema,
+});
+
 const bodySchema = z.object({
   rawQuery: z.string().trim().min(3).max(500),
+  intent: intentSchema,
   turnstileToken: z.string(),
 });
 
@@ -39,6 +56,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "invalid_request" }, { status: 400 });
     }
     const { rawQuery, turnstileToken } = parsed.data;
+    const intent = parsed.data.intent as Intent;
 
     const ip = clientIp(req);
 
@@ -70,8 +88,6 @@ export async function POST(req: Request) {
     if (isDailyBudgetExhausted()) {
       return Response.json({ budgetExhausted: true }, { status: 200 });
     }
-
-    const intent = await extractIntent(rawQuery);
 
     const id = nanoid(10);
     createRun({ id, rawQuery, intent, clientIpHash: ipHash });
