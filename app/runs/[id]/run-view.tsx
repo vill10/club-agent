@@ -39,6 +39,7 @@ type IntentKey = keyof Intent;
 
 const INTENT_ORDER: IntentKey[] = [
   "category",
+  "activity",
   "age",
   "district",
   "budget",
@@ -47,14 +48,15 @@ const INTENT_ORDER: IntentKey[] = [
 ];
 
 const INTENT_PREFIX: Partial<Record<IntentKey, string>> = {
+  activity: "Занятие:",
   age: "Возраст:",
   district: "Район:",
   budget: "Бюджет:",
   schedule: "Расписание:",
 };
 
-function intentFieldText(key: IntentKey, f: IntentField<unknown>): string | null {
-  if (!f.present || f.value == null) return null;
+function intentFieldText(key: IntentKey, f: IntentField<unknown> | undefined): string | null {
+  if (!f || !f.present || f.value == null) return null;
   let body: string;
   if (key === "category" && typeof f.value === "string") {
     body = CATEGORY_LABEL[f.value as Category] ?? String(f.value);

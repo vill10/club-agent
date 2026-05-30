@@ -49,6 +49,7 @@ function renderField<T>(label: string, f: IntentField<T> | undefined): string | 
 export function buildIntentBlock(intent: Intent): string {
   const lines: (string | null)[] = [
     renderField("Категория", intent.category),
+    renderField("Вид занятия", intent.activity),
     renderField("Возраст", intent.age),
     renderField("Район", intent.district),
     renderField("Бюджет", intent.budget),

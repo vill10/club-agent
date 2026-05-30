@@ -31,7 +31,8 @@ const CATEGORY_LABEL: Record<Category, string> = CATEGORIES.reduce(
 
 // Affordance copy for adding an optional field.
 const ADD_LABEL: Record<FieldKey, string> = {
-  category: "+ Вид занятия",
+  category: "+ Категория",
+  activity: "+ Вид занятия",
   age: "+ Возраст",
   district: "+ Добавить район",
   budget: "+ Бюджет",
@@ -46,10 +47,20 @@ const REQUIRED_PLACEHOLDER: Partial<Record<FieldKey, string>> = {
 };
 
 const REQUIRED: FieldKey[] = ["category", "age"];
-const OPTIONAL: FieldKey[] = ["district", "budget", "schedule", "hardRequirements"];
+// `activity` is optional (not required-gated). Listed first among optionals so
+// the specific discipline pill ("Плавание") sits right after the category.
+const OPTIONAL: FieldKey[] = ["activity", "district", "budget", "schedule", "hardRequirements"];
 
 function isRequired(key: FieldKey): boolean {
   return REQUIRED.includes(key);
+}
+
+// `activity` is optional on the Intent type and may be missing on older runs.
+// Normalize any missing field to an absent IntentField so downstream reads
+// (.present / .value) never throw.
+const ABSENT_FIELD: IntentField<unknown> = { value: null, present: false, confidence: "low" };
+function fieldOf(intent: Intent, key: FieldKey): IntentField<unknown> {
+  return (intent[key] as IntentField<unknown> | undefined) ?? ABSENT_FIELD;
 }
 
 // A field counts as "filled" when present and carries a non-empty value.
@@ -113,7 +124,7 @@ export function IntentChips({
     setEditing((cur) => (cur === key ? null : cur));
   }
 
-  const requiredMissing = REQUIRED.some((k) => !fieldFilled(intent[k]));
+  const requiredMissing = REQUIRED.some((k) => !fieldFilled(fieldOf(intent, k)));
   const confirmDisabled = submitting || requiredMissing;
 
   return (
@@ -128,7 +139,7 @@ export function IntentChips({
         <div className="flex flex-wrap gap-2">
           {/* Required + optional present fields */}
           {([...REQUIRED, ...OPTIONAL] as FieldKey[]).map((key) => {
-            const f = intent[key];
+            const f = fieldOf(intent, key);
             const filled = fieldFilled(f);
             const required = isRequired(key);
 
@@ -198,7 +209,7 @@ export function IntentChips({
           })}
 
           {/* Optional + absent → add affordances */}
-          {OPTIONAL.filter((k) => !intent[k].present).map((key) => (
+          {OPTIONAL.filter((k) => !fieldOf(intent, k).present).map((key) => (
             <button
               key={key}
               type="button"

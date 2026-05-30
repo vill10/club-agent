@@ -30,6 +30,7 @@ function intentFieldSchema<T extends z.ZodTypeAny>(valueSchema: T) {
 
 const intentSchema = z.object({
   category: intentFieldSchema(categoryEnum),
+  activity: intentFieldSchema(z.string()),
   age: intentFieldSchema(z.string()),
   district: intentFieldSchema(z.string()),
   budget: intentFieldSchema(z.string()),
@@ -43,6 +44,7 @@ function absentIntent(): Intent {
   const field = <T>() => ({ value: null as T | null, present: false, confidence: "low" as const });
   return {
     category: field<Category>(),
+    activity: field<string>(),
     age: field<string>(),
     district: field<string>(),
     budget: field<string>(),
@@ -56,6 +58,7 @@ const SYSTEM = `You extract a structured search intent from a parent's free-text
 Output ONLY a JSON object (no prose, no code fences) with EXACTLY this shape:
 {
   "category":         { "value": <enum|null>,      "present": <bool>, "confidence": "high"|"medium"|"low" },
+  "activity":         { "value": <string|null>,    "present": <bool>, "confidence": "high"|"medium"|"low" },
   "age":              { "value": <string|null>,    "present": <bool>, "confidence": "high"|"medium"|"low" },
   "district":         { "value": <string|null>,    "present": <bool>, "confidence": "high"|"medium"|"low" },
   "budget":           { "value": <string|null>,    "present": <bool>, "confidence": "high"|"medium"|"low" },
@@ -66,6 +69,7 @@ Output ONLY a JSON object (no prose, no code fences) with EXACTLY this shape:
 Rules:
 - Extract ONLY what is explicitly present (or unambiguously inferable) in the query. NEVER invent or guess.
 - category MUST be one of: "sport" | "art" | "music" | "language" | "coding" | "dance" | "chess" | "other". Pick the best fit. Robotics/programming/STEM → "coding". Swimming/football/etc. → "sport". Use "other" only if nothing fits. If the activity is not stated at all, set present:false.
+- activity: the SPECIFIC discipline/activity the user named, in their own words, e.g. "плавание" (swimming), "робототехника" (robotics), "гитара" (guitar), "футбол" (football). This is the precise thing they want, distinct from the coarse "category" bucket. When the user names a specific activity → present:true, confidence:high (or medium if only inferable). When the user gives ONLY a broad category (e.g. "спорт", "что-нибудь творческое") with no specific discipline → present:false, value:null. NEVER invent an activity the user did not name.
 - age: a single age like "8" or a range like "6-9", as a string. If not stated, present:false.
 - For ANY field NOT stated in the query: set "present": false, "value": null (or [] for hardRequirements), "confidence": "low". Do this for category and age too — do NOT guess the required fields.
 - For stated fields: "present": true. confidence "high" when explicit, "medium" when inferred.
@@ -85,7 +89,7 @@ export async function extractIntent(rawQuery: string): Promise<Intent> {
     SYSTEM,
     `Query:\n${rawQuery}`,
     intentSchema,
-    absentIntent(),
+    absentIntent() as z.infer<typeof intentSchema>,
   );
   return parsed as Intent;
 }

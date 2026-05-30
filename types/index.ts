@@ -10,6 +10,7 @@ export interface IntentField<T> {
 
 export interface Intent {
   category: IntentField<Category>;     // required
+  activity?: IntentField<string>;      // optional — specific discipline in the user's words (e.g. "плавание", "робототехника")
   age: IntentField<string>;            // required (e.g. "8" or "6-9")
   district: IntentField<string>;       // optional
   budget: IntentField<string>;         // optional (e.g. "≤30000₸/mo")

@@ -16,13 +16,13 @@ import { z } from "zod";
 
 import { tools, clearRunEnrichment } from "@/lib/agent/tools";
 import { SYSTEM_PROMPT, buildIntentBlock } from "@/lib/agent/playbook";
-import { appendEvent, setRunStatus, getCards } from "@/lib/db-queries";
+import { appendEvent, setRunStatus, getCards, getRun } from "@/lib/db-queries";
 import { emitRunEvent, closeRunBus } from "@/lib/events";
 import { isDailyBudgetExhausted, addDailyCost } from "@/lib/budget";
 import type { Intent, RunEventKind, RunEventPayload } from "@/types";
 
 const ORCHESTRATOR_MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 4096;
+const MAX_TOKENS = 8192;
 // Runaway-safety net only — NOT the real budget. The dollar daily cap
 // (isDailyBudgetExhausted) is the actual spend governor; this breaker exists
 // purely to kill a pathological loop (e.g. the model wedged in a tool-call
@@ -135,10 +135,19 @@ export async function runAgent(
     },
   ];
 
+  // Surface the user's EXACT words to the agent. The structured intent's
+  // `category` is a coarse enum (e.g. "sport") that loses the specific activity
+  // ("плавание"); pulling the raw query in lets the agent search for the exact
+  // discipline the parent named, not just the broad category.
+  const rawQuery = getRun(runId)?.rawQuery?.trim();
+  const initialUserText = rawQuery
+    ? `Точный запрос пользователя: "${rawQuery}"\n\nИспользуй И этот запрос, И структурированные критерии (блок INTENT в системном промпте). Если в запросе указан конкретный вид занятия (например «плавание», «робототехника», «гитара»), ищи именно его, а не категорию в целом.\n\nНайди подходящие кружки/секции по этому запросу.`
+    : "Найди подходящие кружки/секции по этому запросу.";
+
   const messages: Anthropic.MessageParam[] = [
     {
       role: "user",
-      content: "Найди подходящие кружки/секции по этому запросу.",
+      content: initialUserText,
     },
   ];
 
@@ -180,10 +189,24 @@ export async function runAgent(
         }
       }
 
-      if (response.stop_reason === "tool_use") {
+      // ── Tool-use FIRST, regardless of stop_reason ───────────────────────
+      // The Anthropic API requires that EVERY tool_use block in an assistant
+      // message be answered by a matching tool_result in the very next user
+      // message. We therefore branch on the PRESENCE of tool_use blocks before
+      // we ever look at stop_reason. Critically, this handles the case where
+      // the model hit max_tokens WHILE emitting tool_use blocks (e.g. drafting
+      // several outreach messages at once): if we instead took a max_tokens
+      // branch and pushed a bare "Продолжай." user message, those tool_use ids
+      // would be left unanswered → 400 on the next call. Here every id gets a
+      // tool_result (an is_error result for a truncated/invalid input), so the
+      // invariant holds on every code path.
+      const toolUseBlocks = response.content.filter(
+        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
+      );
+
+      if (toolUseBlocks.length > 0) {
         const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const block of response.content) {
-          if (block.type !== "tool_use") continue;
+        for (const block of toolUseBlocks) {
           const tool = tools.find((t) => t.name === block.name);
           if (!tool) {
             toolResults.push({
@@ -212,24 +235,29 @@ export async function runAgent(
             });
           }
         }
-        // Push assistant turn + the tool results, then continue the loop.
+        // Push assistant turn + a tool_result for EVERY tool_use id, then
+        // continue the loop. Done regardless of stop_reason — a max_tokens
+        // turn that still contains tool_use is handled correctly here.
         messages.push({ role: "assistant", content: response.content });
         messages.push({ role: "user", content: toolResults });
         continue;
       }
 
+      // ── No tool_use blocks → safe to branch on stop_reason ──────────────
       if (response.stop_reason === "max_tokens") {
-        // The model hit the 4096-token output ceiling mid-turn — this is NOT a
-        // clean finish; it may have been about to call a tool. Keep the partial
-        // assistant turn, nudge it to continue, and loop. This counts toward
-        // MAX_ITERATIONS and the token breaker, so it can't spin forever; a
-        // persistent max_tokens run finalizes via the iteration-cap path below.
+        // Pure text truncation (no unanswered tool_use ids). The model hit the
+        // output ceiling mid-narration — keep the partial assistant turn, nudge
+        // it to continue, and loop. This counts toward MAX_ITERATIONS and the
+        // token breaker, so it can't spin forever; a persistent max_tokens run
+        // finalizes via the iteration-cap path below. Safe now: there are no
+        // tool_use ids awaiting a tool_result.
         messages.push({ role: "assistant", content: response.content });
         messages.push({ role: "user", content: "Продолжай." });
         continue;
       }
 
-      // end_turn / stop_sequence → the agent is genuinely done.
+      // end_turn / stop_sequence → the agent is genuinely done. Any other
+      // stop_reason with no tool_use is treated as done defensively.
       endedCleanly = true;
       break;
     }
