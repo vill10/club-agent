@@ -69,20 +69,22 @@
 }
 
 :root {
-  /* ── Club Agent design tokens — dark-first, never pure black/white ── */
-  --bg: oklch(0.18 0.02 290);
-  --surface: oklch(0.22 0.025 290);
-  --surface-raised: oklch(0.26 0.03 290);
-  --text: oklch(0.96 0.01 290);
-  --text-muted: oklch(0.72 0.015 290);
-  --text-faint: oklch(0.55 0.015 290);
-  --accent: oklch(0.62 0.19 295);
-  --accent-hover: oklch(0.68 0.19 295);
-  --accent-subtle: oklch(0.30 0.08 295);
-  --accent-glow: oklch(0.62 0.19 295 / 0.25);
-  --success: oklch(0.70 0.15 150);
-  --warning: oklch(0.78 0.14 75);
-  --error: oklch(0.65 0.18 25);
+  /* ── Club Agent design tokens — Linear-dark: near-neutral surfaces, ──── */
+  /* violet is the ONLY saturated color. Never pure black / white.         */
+  --bg: oklch(0.155 0.004 270);
+  --surface: oklch(0.195 0.005 270);
+  --surface-raised: oklch(0.235 0.006 270);
+  --border: oklch(0.275 0.006 270);
+  --text: oklch(0.97 0.003 270);
+  --text-muted: oklch(0.72 0.006 270);
+  --text-faint: oklch(0.55 0.006 270);
+  --accent: oklch(0.62 0.22 300);
+  --accent-hover: oklch(0.68 0.22 300);
+  --accent-subtle: oklch(0.30 0.10 300);
+  --accent-glow: oklch(0.62 0.22 300 / 0.30);
+  --success: oklch(0.72 0.15 150);
+  --warning: oklch(0.80 0.13 75);
+  --error: oklch(0.66 0.20 25);
 
   --radius-pill: 9999px;
   --radius-card: 14px;
@@ -137,10 +139,14 @@
   --secondary-foreground: var(--text);
   --muted: var(--surface);
   --muted-foreground: var(--text-muted);
+  /* Club Agent identity: `--accent` IS the violet. shadcn's neutral-grey      */
+  /* `--accent` (set in light `:root`) would otherwise win the cascade here and */
+  /* make `bg-accent` / `text-accent` resolve to grey — pin it to the violet.   */
+  --accent: oklch(0.62 0.22 300);
   --accent-foreground: var(--text);
   --destructive: var(--error);
-  --border: oklch(0.32 0.02 290);
-  --input: oklch(0.32 0.02 290);
+  --border: oklch(0.275 0.006 270);
+  --input: oklch(0.275 0.006 270);
   --ring: var(--accent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -153,7 +159,7 @@
   --sidebar-primary-foreground: var(--text);
   --sidebar-accent: var(--accent-subtle);
   --sidebar-accent-foreground: var(--text);
-  --sidebar-border: oklch(0.32 0.02 290);
+  --sidebar-border: oklch(0.275 0.006 270);
   --sidebar-ring: var(--accent);
 }
 
@@ -197,19 +203,9 @@
   animation: cl-activity-in 240ms ease-out both;
 }
 
-/* In-flight tool spinner. */
-@keyframes cl-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.cl-spinner {
-  animation: cl-spin 0.7s linear infinite;
-}
-
 /* Honor reduced-motion: neutralize all animation + transition.            */
-/* The blanket override below also defuses cl-activity-in / cl-spin.       */
+/* The blanket override below also defuses cl-activity-in + the Loader2    */
+/* spinner's animate-spin (the spinner is also motion-reduce:hidden).      */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
