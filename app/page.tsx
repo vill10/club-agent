@@ -9,9 +9,7 @@ import {
   TurnstileGate,
   type TurnstileGateHandle,
 } from "@/components/turnstile-gate";
-import { FrostedText } from "@/components/ui/frosted-text";
 import { WebGLShader } from "@/components/ui/web-gl-shader";
-import { cn } from "@/lib/utils";
 import type { CreateRunResponse, Intent } from "@/types";
 
 type RunStatus = "idle" | "submitting" | "budget" | "rate_limited" | "error";
@@ -119,40 +117,11 @@ export default function Home() {
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-16 sm:py-24">
-        {/* Frosted-glass hero — NO box. The heading is TRUE glass letters: a
-            backdrop-blur layer masked to the glyph shapes, so the animated
-            violet beam shows through the letters BLURRED/frosted while staying
-            fully transparent everywhere else. Real text kept sr-only for a11y.
-            The subtitle (wrapping Russian) uses the translucent-glass fallback —
-            semi-transparent white fill so the beam shows through the glyphs,
-            with a soft text-shadow for legibility. No panel, no border. */}
         <header className="mb-10 flex flex-col items-center text-center sm:mb-12">
-          <h1 className="sr-only">Club Agent</h1>
-          {/* Glass-letter heading. Width clamps the responsive scale; the SVG
-              mask scales with it (text-6xl → md:text-8xl equivalents). */}
-          <FrostedText
-            text="Club Agent"
-            fontSize={100}
-            fontWeight={800}
-            letterSpacing={-3}
-            blur={13}
-            tintAlpha={0.09}
-            strokeAlpha={0.38}
-            className="w-[min(92vw,34rem)]"
-          />
-
-          {/* Subtitle: translucent-glass fallback (beam visible through the
-              glyphs, no box). */}
-          <p className="sr-only">
-            Агент для поиска подходящих кружков и секций в Астане
-          </p>
-          <p
-            aria-hidden
-            className={cn(
-              "mx-auto mt-6 max-w-xl text-base font-medium sm:text-lg",
-              "text-white/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.6),0_0_14px_color-mix(in_oklch,var(--accent-glow)_30%,transparent)]",
-            )}
-          >
+          <h1 className="text-6xl font-extrabold tracking-tighter text-text md:text-8xl">
+            Club Agent
+          </h1>
+          <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
             Агент для поиска подходящих кружков и секций в Астане
           </p>
         </header>
