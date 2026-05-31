@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { ActivityStream } from "@/components/activity-stream";
@@ -279,9 +280,11 @@ function MobileActivityDrawer({
         <span className="min-w-0 flex-1 truncate text-sm text-muted">
           {latest}
         </span>
-        <span aria-hidden className="shrink-0 text-faint">
-          {open ? "▼" : "▲"}
-        </span>
+        {open ? (
+          <ChevronDown size={16} aria-hidden className="shrink-0 text-faint" />
+        ) : (
+          <ChevronUp size={16} aria-hidden className="shrink-0 text-faint" />
+        )}
       </button>
       {open && (
         <div className="h-[45vh] border-t border-border px-3 pb-3">
@@ -304,9 +307,9 @@ export function RunView({
   const [queryOpen, setQueryOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
-      {/* ── Sticky header ─────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-bg">
+      {/* ── Sticky header (natural height) ────────────────── */}
+      <header className="z-30 shrink-0 border-b border-border bg-bg/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
           <Link
             href="/"
@@ -325,35 +328,42 @@ export function RunView({
       </header>
 
       {/* ── Desktop: three-panel grid (≥768px) ────────────── */}
-      <div className="mx-auto hidden w-full max-w-[1400px] flex-1 grid-cols-[minmax(0,16rem)_minmax(0,1fr)_minmax(0,26rem)] gap-6 px-6 py-6 md:grid">
-        {/* Left: query + read-only intent */}
-        <aside className="min-w-0">
-          <div className="sticky top-20 rounded-card bg-surface p-5">
+      {/* Fills the height below the header; each pane scrolls within its     */}
+      {/* own bounds. `min-h-0` on the region AND scrollable children is the   */}
+      {/* fix — flex/grid children won't shrink below content without it.      */}
+      <div className="mx-auto hidden min-h-0 w-full max-w-[1400px] flex-1 grid-cols-[minmax(0,16rem)_minmax(0,1fr)_minmax(0,26rem)] gap-6 px-6 py-6 md:grid">
+        {/* Left: query + read-only intent (scrolls if tall) */}
+        <aside className="flex min-h-0 min-w-0 flex-col">
+          <div className="min-h-0 overflow-y-auto rounded-card bg-surface p-5">
             <QueryPanel snapshot={initialSnapshot} />
           </div>
         </aside>
 
         {/* Center: activity stream */}
-        <section className="flex min-w-0 flex-col">
-          <h2 className="mb-3 text-sm font-semibold text-text">Ход поиска</h2>
+        <section className="flex min-h-0 min-w-0 flex-col">
+          <h2 className="mb-3 shrink-0 text-sm font-semibold text-text">
+            Ход поиска
+          </h2>
           <div className="min-h-0 flex-1 rounded-card bg-surface p-3">
-            <div className="h-[calc(100vh-12rem)]">
-              <ActivityStream events={events} status={status} />
-            </div>
+            <ActivityStream events={events} status={status} />
           </div>
         </section>
 
-        {/* Right: cards */}
-        <section className="min-w-0">
-          <h2 className="mb-3 text-sm font-semibold text-text">
+        {/* Right: cards (own scroll) */}
+        <section className="flex min-h-0 min-w-0 flex-col">
+          <h2 className="mb-3 shrink-0 text-sm font-semibold text-text">
             Найденные клубы ({cards.length})
           </h2>
-          <CardsList cards={cards} status={status} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CardsList cards={cards} status={status} />
+          </div>
         </section>
       </div>
 
       {/* ── Mobile: single column (<768px) ────────────────── */}
-      <div className="flex flex-1 flex-col px-4 pb-24 pt-4 md:hidden">
+      {/* Mobile keeps page-level scroll: the shell is fixed-height, so this   */}
+      {/* column owns the overflow and clears the bottom drawer via padding.   */}
+      <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:hidden">
         {/* Collapsible query + intent */}
         <div className="rounded-card bg-surface">
           <button
@@ -365,9 +375,11 @@ export function RunView({
             <span className="min-w-0 flex-1 truncate text-sm text-muted">
               {initialSnapshot.run.rawQuery}
             </span>
-            <span aria-hidden className="ml-2 shrink-0 text-faint">
-              {queryOpen ? "▲" : "▼"}
-            </span>
+            {queryOpen ? (
+              <ChevronUp size={16} aria-hidden className="ml-2 shrink-0 text-faint" />
+            ) : (
+              <ChevronDown size={16} aria-hidden className="ml-2 shrink-0 text-faint" />
+            )}
           </button>
           {queryOpen && (
             <div className="border-t border-border px-4 py-4">
