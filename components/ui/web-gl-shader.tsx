@@ -45,6 +45,11 @@ export function WebGLShader() {
       uniform float yScale;
       uniform float distortion;
 
+      // Vertical offset raising the beam UP so it sits behind the headline
+      // area rather than mid-screen. p.y is +up; subtracting BEAM_Y shifts the
+      // beam's center (where the line resolves) upward by BEAM_Y.
+      #define BEAM_Y 0.4
+
       void main() {
         vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
 
@@ -54,9 +59,9 @@ export function WebGLShader() {
         float gx = p.x;
         float bx = p.x * (1.0 - d);
 
-        float r = 0.05 / abs(p.y + sin((rx + time) * xScale) * yScale);
-        float g = 0.05 / abs(p.y + sin((gx + time) * xScale) * yScale);
-        float b = 0.05 / abs(p.y + sin((bx + time) * xScale) * yScale);
+        float r = 0.05 / abs((p.y - BEAM_Y) + sin((rx + time) * xScale) * yScale);
+        float g = 0.05 / abs((p.y - BEAM_Y) + sin((gx + time) * xScale) * yScale);
+        float b = 0.05 / abs((p.y - BEAM_Y) + sin((bx + time) * xScale) * yScale);
 
         // Recolor the animated chromatic beams to violet/magenta (accent ~ #9d5bf4):
         // suppress green so the moving beams read purple instead of white/rainbow.
