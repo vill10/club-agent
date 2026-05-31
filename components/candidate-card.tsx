@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Baby,
   Camera,
@@ -219,12 +220,24 @@ export function CandidateCard({ card }: { card: Card }) {
 
   const hasLocation = Boolean(district || address);
 
+  // Glass reveal: fade + rise on scroll-into-view, ~0.4s ease-out. Gated on
+  // reduced-motion (rendered flat) so we don't animate for users who opt out.
+  const reduce = useReducedMotion();
+
   return (
-    <article
+    <motion.article
+      initial={reduce ? false : { opacity: 0, y: 16 }}
+      whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       className={cn(
-        "w-full rounded-card bg-surface p-5",
+        // Translucent glass over the live shader — slightly more opaque than a
+        // pure overlay so text stays crisp; blur + faint border give the
+        // floating/elevated feel.
+        "w-full rounded-card border border-white/5 bg-surface/55 p-5 backdrop-blur-xl",
+        "shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)]",
         "transition-shadow duration-200",
-        "hover:shadow-[0_0_40px_-12px_var(--accent-glow)]",
+        "hover:shadow-[0_0_40px_-8px_var(--accent-glow)]",
       )}
     >
       {/* Header */}
@@ -319,7 +332,7 @@ export function CandidateCard({ card }: { card: Card }) {
           ))}
         </div>
       )}
-    </article>
+    </motion.article>
   );
 }
 
@@ -338,7 +351,7 @@ export function CandidateCardSkeleton({
   district?: string;
 } = {}) {
   return (
-    <article className="w-full rounded-card bg-surface p-5">
+    <article className="w-full rounded-card border border-white/5 bg-surface/55 p-5 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl">
       <header className="flex items-start gap-2">
         {name ? (
           <h3 className="text-base font-semibold leading-snug tracking-tight text-text">

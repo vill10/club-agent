@@ -10,6 +10,7 @@ import {
   CandidateCardSkeleton,
 } from "@/components/candidate-card";
 import { BudgetMeter } from "@/components/budget-meter";
+import { RunShader } from "@/components/ui/run-shader";
 import { useRunStream } from "@/hooks/use-run-stream";
 import { cn } from "@/lib/utils";
 import type {
@@ -307,9 +308,21 @@ export function RunView({
   const [queryOpen, setQueryOpen] = useState(false);
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-bg">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-transparent">
+      {/* The agent's beam BRANCHING into many — fixed violet light-streams
+          behind everything. Dim by design; the panels below add a scrim so
+          text stays crisp. Falls back to near-black if webgl2 is unavailable. */}
+      <RunShader />
+
+      {/* Soft top vignette so the header + first rows keep contrast over the
+          shader's brighter convergence zone. Above the canvas, below content. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-48 bg-gradient-to-b from-bg to-transparent"
+      />
+
       {/* ── Sticky header (natural height) ────────────────── */}
-      <header className="z-30 shrink-0 border-b border-border bg-bg/90 backdrop-blur">
+      <header className="z-30 shrink-0 border-b border-border bg-bg/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
           <Link
             href="/"
@@ -334,7 +347,7 @@ export function RunView({
       <div className="mx-auto hidden min-h-0 w-full max-w-[1400px] flex-1 grid-cols-[minmax(0,16rem)_minmax(0,1fr)_minmax(0,26rem)] gap-6 px-6 py-6 md:grid">
         {/* Left: query + read-only intent (scrolls if tall) */}
         <aside className="flex min-h-0 min-w-0 flex-col">
-          <div className="min-h-0 overflow-y-auto rounded-card bg-surface p-5">
+          <div className="min-h-0 overflow-y-auto rounded-card border border-white/5 bg-bg/50 p-5 backdrop-blur-sm">
             <QueryPanel snapshot={initialSnapshot} />
           </div>
         </aside>
@@ -344,7 +357,7 @@ export function RunView({
           <h2 className="mb-3 shrink-0 text-sm font-semibold text-text">
             Ход поиска
           </h2>
-          <div className="min-h-0 flex-1 rounded-card bg-surface p-3">
+          <div className="min-h-0 flex-1 rounded-card border border-white/5 bg-bg/50 p-3 backdrop-blur-sm">
             <ActivityStream events={events} status={status} />
           </div>
         </section>
@@ -365,7 +378,7 @@ export function RunView({
       {/* column owns the overflow and clears the bottom drawer via padding.   */}
       <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:hidden">
         {/* Collapsible query + intent */}
-        <div className="rounded-card bg-surface">
+        <div className="rounded-card border border-white/5 bg-bg/50 backdrop-blur-sm">
           <button
             type="button"
             onClick={() => setQueryOpen((v) => !v)}
