@@ -122,8 +122,7 @@ export default function Home() {
             Club Agent
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
-            Агент сам обыщет 2ГИС, сайты и соцсети, найдёт подходящие кружки
-            и секции в Астане и соберёт всё в одном месте.
+            Агент для поиска подходящих кружков и секций в Астане
           </p>
         </header>
 

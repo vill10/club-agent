@@ -1,204 +1,177 @@
-"use client";
+"use client"
 
-import { useEffect, useRef } from "react";
-import * as THREE from "three";
-
-// "The beam" — one concentrated violet light-beam rendered as a fixed,
-// pointer-transparent background layer behind the landing hero. Raymarched
-// sine-distortion beams with subtle chromatic edges, retuned from a rainbow
-// palette to read VIOLET / MAGENTA on near-black (matching --bg ≈ #0b0c0e and
-// --accent ≈ #9d5bf4). Perf guards: capped pixel ratio, paused while the tab is
-// hidden, and a single static frame under prefers-reduced-motion.
-
-const vertexShader = /* glsl */ `
-attribute vec3 position;
-void main() {
-  gl_Position = vec4(position, 1.0);
-}
-`;
-
-// The beam intensity is computed via stacked sine-distorted horizontal bands
-// (the original rainbow effect), but instead of splitting the final color into
-// R/G/B rainbow channels we keep a small chromatic split for the magenta edges
-// and then tint the whole thing toward the brand violet. Renders on near-black
-// (not pure black) so the canvas blends seamlessly with the page background.
-const fragmentShader = /* glsl */ `
-precision highp float;
-
-uniform vec2 resolution;
-uniform float time;
-uniform float xScale;
-uniform float yScale;
-uniform float distortion;
-
-// Single beam-intensity sample with a small horizontal offset used to fake
-// chromatic aberration at the beam edges. The y-axis is compressed so the
-// energy concentrates into a horizontal streak — but only ~3.2x (not 8x) so
-// the beam reads as a broad, soft band of light rather than a hairline.
-float beam(vec2 p, float offset) {
-  float d = length(vec2(p.x, (p.y + offset) * 4.2));
-  float rate = pow(abs(2.0 * fract(time * 0.05) - 1.0), 3.0) * 0.3 + 0.1;
-  d += sin(p.x * xScale + time) * sin(p.y * yScale + time) * distortion * rate;
-  // Brightness multiplier — the beam's peak energy. Raised substantially so the
-  // streak is an obviously-glowing violet light-beam, not a faint scrim.
-  return 0.04 / abs(d);
-}
-
-void main() {
-  // Normalized, aspect-corrected coords centered on the screen.
-  vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
-
-  // Chromatic split: sample the beam at three small vertical offsets. The
-  // center carries most of the energy; the outer two bleed magenta/violet at
-  // the edges rather than full rainbow.
-  float core = beam(p, 0.0);
-  float edgeA = beam(p, 0.014);
-  float edgeB = beam(p, -0.014);
-
-  // Map to a violet palette: boost R and B, keep G low so the beam glows
-  // violet with magenta chromatic fringes.
-  vec3 col = vec3(0.0);
-  col += core * vec3(0.72, 0.36, 1.05);   // violet core
-  col += edgeA * vec3(0.95, 0.22, 0.85);  // magenta fringe
-  col += edgeB * vec3(0.52, 0.26, 1.10);  // blue-violet fringe
-
-  // Soft tone-map so the hot core doesn't blow out to white but the beam body
-  // stays bright and saturated. Higher shoulder = more headroom before white.
-  col = col / (col + vec3(0.78));
-
-  // Sit on near-black (matches --bg ≈ #0b0c0e) so the canvas blends with the
-  // page rather than reading as a black box.
-  vec3 base = vec3(0.043, 0.046, 0.055);
-  col += base;
-
-  gl_FragColor = vec4(col, 1.0);
-}
-`;
+import { useEffect, useRef } from "react"
+import * as THREE from "three"
 
 export function WebGLShader() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sceneRef = useRef<{
+    scene: THREE.Scene | null
+    camera: THREE.OrthographicCamera | null
+    renderer: THREE.WebGLRenderer | null
+    mesh: THREE.Mesh | null
+    uniforms: any
+    animationId: number | null
+  }>({
+    scene: null,
+    camera: null,
+    renderer: null,
+    mesh: null,
+    uniforms: null,
+    animationId: null,
+  })
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvasRef.current) return
 
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: false,
-        powerPreference: "low-power",
-      });
-    } catch {
-      // No WebGL context available (e.g. headless / blocked) — leave the
-      // near-black background as the static fallback.
-      return;
+    const canvas = canvasRef.current
+    const { current: refs } = sceneRef
+
+    const prefersReducedMotion =
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+
+    const vertexShader = `
+      attribute vec3 position;
+      void main() {
+        gl_Position = vec4(position, 1.0);
+      }
+    `
+
+    const fragmentShader = `
+      precision highp float;
+      uniform vec2 resolution;
+      uniform float time;
+      uniform float xScale;
+      uniform float yScale;
+      uniform float distortion;
+
+      void main() {
+        vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
+
+        float d = length(p) * distortion;
+
+        float rx = p.x * (1.0 + d);
+        float gx = p.x;
+        float bx = p.x * (1.0 - d);
+
+        float r = 0.05 / abs(p.y + sin((rx + time) * xScale) * yScale);
+        float g = 0.05 / abs(p.y + sin((gx + time) * xScale) * yScale);
+        float b = 0.05 / abs(p.y + sin((bx + time) * xScale) * yScale);
+
+        // Recolor the animated chromatic beams to violet/magenta (accent ~ #9d5bf4):
+        // suppress green so the moving beams read purple instead of white/rainbow.
+        vec3 col = vec3(
+          r * 0.75 + b * 0.30,
+          g * 0.28,
+          b * 0.90 + r * 0.25
+        );
+
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `
+
+    const initScene = () => {
+      refs.scene = new THREE.Scene()
+      refs.renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+      refs.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75))
+      refs.renderer.setClearColor(new THREE.Color(0x0b0c0e))
+
+      refs.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, -1)
+
+      refs.uniforms = {
+        resolution: { value: [window.innerWidth, window.innerHeight] },
+        time: { value: 0.0 },
+        xScale: { value: 1.0 },
+        yScale: { value: 0.5 },
+        distortion: { value: 0.05 },
+      }
+
+      const position = [
+        -1.0, -1.0, 0.0,
+         1.0, -1.0, 0.0,
+        -1.0,  1.0, 0.0,
+         1.0, -1.0, 0.0,
+        -1.0,  1.0, 0.0,
+         1.0,  1.0, 0.0,
+      ]
+
+      const positions = new THREE.BufferAttribute(new Float32Array(position), 3)
+      const geometry = new THREE.BufferGeometry()
+      geometry.setAttribute("position", positions)
+
+      const material = new THREE.RawShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: refs.uniforms,
+        side: THREE.DoubleSide,
+      })
+
+      refs.mesh = new THREE.Mesh(geometry, material)
+      refs.scene.add(refs.mesh)
+
+      handleResize()
     }
 
-    // Perf guard: cap pixel ratio so we never render at an uncapped retina
-    // density (the original used raw devicePixelRatio).
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.75);
-    renderer.setPixelRatio(pixelRatio);
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.Camera();
-    camera.position.z = 1;
-
-    const geometry = new THREE.BufferGeometry();
-    // Full-screen triangle.
-    const vertices = new Float32Array([
-      -1.0, -1.0, 0.0, 3.0, -1.0, 0.0, -1.0, 3.0, 0.0,
-    ]);
-    geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-
-    const uniforms = {
-      resolution: { value: new THREE.Vector2() },
-      time: { value: 0.0 },
-      xScale: { value: 1.0 },
-      yScale: { value: 0.5 },
-      distortion: { value: 0.05 },
-    };
-
-    const material = new THREE.RawShaderMaterial({
-      vertexShader,
-      fragmentShader,
-      uniforms,
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-
-    function resize() {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      renderer.setSize(w, h, false);
-      // resolution is in device pixels (matches gl_FragCoord).
-      uniforms.resolution.value.set(w * pixelRatio, h * pixelRatio);
-    }
-    resize();
-
-    const reduceMotion =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    let rafId = 0 as number;
-    let running = false;
-    const start = performance.now();
-
-    function renderFrame(t: number) {
-      uniforms.time.value = t;
-      renderer.render(scene, camera);
+    const renderFrame = () => {
+      if (refs.renderer && refs.scene && refs.camera) {
+        refs.renderer.render(refs.scene, refs.camera)
+      }
     }
 
-    function loop() {
-      uniforms.time.value = (performance.now() - start) / 1000;
-      renderer.render(scene, camera);
-      rafId = requestAnimationFrame(loop);
+    const animate = () => {
+      if (refs.uniforms) refs.uniforms.time.value += 0.01
+      renderFrame()
+      refs.animationId = requestAnimationFrame(animate)
     }
 
-    function startLoop() {
-      if (running || reduceMotion) return;
-      running = true;
-      rafId = requestAnimationFrame(loop);
+    const handleResize = () => {
+      if (!refs.renderer || !refs.uniforms) return
+      const width = window.innerWidth
+      const height = window.innerHeight
+      refs.renderer.setSize(width, height, false)
+      refs.uniforms.resolution.value = [width, height]
     }
 
-    function stopLoop() {
-      if (!running) return;
-      running = false;
-      cancelAnimationFrame(rafId);
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (refs.animationId) {
+          cancelAnimationFrame(refs.animationId)
+          refs.animationId = null
+        }
+      } else if (!refs.animationId && !prefersReducedMotion) {
+        animate()
+      }
     }
 
-    function onVisibility() {
-      // Perf guard: don't burn cycles while the tab is hidden.
-      if (document.hidden) stopLoop();
-      else startLoop();
-    }
-
-    window.addEventListener("resize", resize);
-    document.addEventListener("visibilitychange", onVisibility);
-
-    if (reduceMotion) {
-      // Perf + a11y guard: render a SINGLE static frame, never start rAF.
-      renderFrame(0);
+    initScene()
+    if (prefersReducedMotion) {
+      renderFrame()
     } else {
-      startLoop();
+      animate()
     }
+    window.addEventListener("resize", handleResize)
+    document.addEventListener("visibilitychange", handleVisibility)
 
     return () => {
-      stopLoop();
-      window.removeEventListener("resize", resize);
-      document.removeEventListener("visibilitychange", onVisibility);
-      geometry.dispose();
-      material.dispose();
-      renderer.dispose();
-    };
-  }, []);
+      if (refs.animationId) cancelAnimationFrame(refs.animationId)
+      window.removeEventListener("resize", handleResize)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      if (refs.mesh) {
+        refs.scene?.remove(refs.mesh)
+        refs.mesh.geometry.dispose()
+        if (refs.mesh.material instanceof THREE.Material) {
+          refs.mesh.material.dispose()
+        }
+      }
+      refs.renderer?.dispose()
+    }
+  }, [])
 
   return (
     <canvas
       ref={canvasRef}
-      aria-hidden="true"
-      className="pointer-events-none fixed inset-0 -z-10 h-full w-full"
+      aria-hidden
+      className="fixed top-0 left-0 w-full h-full block -z-10 pointer-events-none"
     />
-  );
+  )
 }
