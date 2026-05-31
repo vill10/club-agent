@@ -9,7 +9,6 @@ import {
   CandidateCard,
   CandidateCardSkeleton,
 } from "@/components/candidate-card";
-import { BudgetMeter } from "@/components/budget-meter";
 import { RunShader } from "@/components/ui/run-shader";
 import { useRunStream } from "@/hooks/use-run-stream";
 import { cn } from "@/lib/utils";
@@ -330,9 +329,6 @@ export function RunView({
           >
             Club Agent
           </Link>
-          <div className="ml-2 hidden sm:block">
-            <BudgetMeter />
-          </div>
           <div className="ml-auto flex items-center gap-3">
             <StatusIndicator status={status} />
             <ShareButton />
@@ -347,7 +343,7 @@ export function RunView({
       <div className="mx-auto hidden min-h-0 w-full max-w-[1400px] flex-1 grid-cols-[minmax(0,16rem)_minmax(0,1fr)_minmax(0,26rem)] gap-6 px-6 py-6 md:grid">
         {/* Left: query + read-only intent (scrolls if tall) */}
         <aside className="flex min-h-0 min-w-0 flex-col">
-          <div className="min-h-0 overflow-y-auto rounded-card border border-white/5 bg-bg/50 p-5 backdrop-blur-sm">
+          <div className="cl-scroll min-h-0 overflow-y-auto rounded-card border border-white/5 bg-bg/50 p-5 backdrop-blur-sm">
             <QueryPanel snapshot={initialSnapshot} />
           </div>
         </aside>
@@ -367,7 +363,7 @@ export function RunView({
           <h2 className="mb-3 shrink-0 text-sm font-semibold text-text">
             Найденные клубы ({cards.length})
           </h2>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="cl-scroll min-h-0 flex-1 overflow-y-auto">
             <CardsList cards={cards} status={status} />
           </div>
         </section>
@@ -376,7 +372,7 @@ export function RunView({
       {/* ── Mobile: single column (<768px) ────────────────── */}
       {/* Mobile keeps page-level scroll: the shell is fixed-height, so this   */}
       {/* column owns the overflow and clears the bottom drawer via padding.   */}
-      <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:hidden">
+      <div className="cl-scroll flex flex-1 flex-col overflow-y-auto px-4 pb-24 pt-4 md:hidden">
         {/* Collapsible query + intent */}
         <div className="rounded-card border border-white/5 bg-bg/50 backdrop-blur-sm">
           <button
