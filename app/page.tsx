@@ -122,7 +122,7 @@ export default function Home() {
             Club Agent
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
-            Агент для поиска подходящих кружков и секций в Астане
+            Агент для поиска детских кружков и секций в Астане
           </p>
         </header>
 

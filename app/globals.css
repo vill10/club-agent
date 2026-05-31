@@ -280,3 +280,23 @@ html .placeholder\:text-muted::placeholder {
 html .placeholder\:text-faint::placeholder {
   color: var(--text-faint);
 }
+
+/* ── Rotating example-query overlay enter animation ──────────────────── */
+/* Incoming example string slides up into place (from +6px) while fading   */
+/* in. The outgoing string's fade/slide-up is handled by a Tailwind        */
+/* transition on the phase toggle in query-box.tsx. The global             */
+/* prefers-reduced-motion block above neutralizes this animation, and the  */
+/* component's useReducedMotion() guard skips the phase logic entirely.    */
+@keyframes example-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-example-enter {
+  animation: example-enter 400ms ease-out;
+}
