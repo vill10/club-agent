@@ -84,12 +84,29 @@ export function resolveDbPath(): string {
 }
 
 function createConnection(): Database.Database {
-  const dbPath = resolveDbPath();
-  // Ensure the parent dir exists so a fresh /data (or any custom path) works.
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  // During `next build`, route modules are evaluated in parallel workers
+  // (e.g. "Collecting page data using N workers"). If each worker opened the
+  // real /data SQLite file — which the running service also has open in WAL
+  // mode — the concurrent opens + the runtime lock produce SQLITE_BUSY and the
+  // build fails. Next sets NEXT_PHASE === "phase-production-build" during the
+  // build, so detect that and give every worker its own isolated in-memory DB:
+  // zero file contention, schema init runs harmlessly in-memory, and the
+  // force-dynamic routes never serve real data at build time anyway.
+  const dbPath =
+    process.env.NEXT_PHASE === "phase-production-build"
+      ? ":memory:"
+      : resolveDbPath();
+  // Ensure the parent dir exists so a fresh /data (or any custom path) works —
+  // but only for a real file path, never for the in-memory ":memory:" handle.
+  if (dbPath !== ":memory:") {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
   const connection = new Database(dbPath);
   connection.pragma("journal_mode = WAL");
   connection.pragma("foreign_keys = ON");
+  // Defensive: if any runtime concurrency does collide, wait up to 5s for the
+  // lock to clear rather than erroring out immediately with SQLITE_BUSY.
+  connection.pragma("busy_timeout = 5000");
   connection.exec(SCHEMA);
   return connection;
 }
