@@ -1,110 +1,72 @@
 "use client";
 
-// run-shader.tsx — the RUN-page background: the landing's violet beam
-// "branching" into many flowing light-streams, representing the agent fanning
-// out parallel searches.
+// run-shader.tsx — the RUN-page background: flowing VIOLET clouds + light
+// streaks behind the live run, representing the agent fanning out parallel
+// searches.
 //
-// This is the shader-only extraction of a webgl2 full-screen fractal-noise
-// "clouds"/light-streams effect (after Matthias Hurrle's animated-shader-hero):
-// a self-contained `WebGLRenderer` class + a `#version 300 es` GLSL fragment
-// shader producing flowing light streams. The orange Hero scaffold, trust
-// badge, headlines, buttons, the `<style jsx>` block, AND the PointerHandler
-// are all dropped — a background needs no mouse interactivity; we feed only
-// `time` + `resolution` uniforms.
+// This is the shader-only extraction of Matthias Hurrle's webgl2
+// clouds/light-streams hero shader, recolored to violet/magenta and dimmed so
+// overlaid cards/text stay readable. The orange Hero scaffold, badges,
+// headlines, buttons, the `<style jsx>` block, AND the PointerHandler are
+// dropped — a background needs no mouse interactivity; we feed only `time` +
+// `resolution` uniforms.
 //
 // Retuned vs. the source:
-//  - Purplized: streams read VIOLET / MAGENTA on near-black (--bg ≈ #0b0c0e),
-//    continuous with the landing beam's identity (no rainbow channels).
-//  - Dimmed: final color scaled down so overlaid text/cards stay crisp; the
-//    run-view adds a scrim on top as a second line of defence.
+//  - Recolored: the two RECOLOR lines below bias streaks + clouds to violet /
+//    magenta on near-black (--bg ≈ #0b0c0e) instead of the original rainbow +
+//    brown. STRUCTURE/motion are identical to the original.
+//  - Dimmed: final color scaled (col *= 0.6) so overlaid text/cards stay crisp;
+//    the run-view adds a scrim on top as a second line of defence.
 //  - Perf guards (this runs for the multi-minute live run): pixel ratio capped
-//    at 1.5, rAF paused on document.hidden, prefers-reduced-motion → ONE static
-//    frame (no loop), full cleanup on unmount, try/catch fallback to near-black.
+//    at ≤1.5, rAF paused on document.hidden, prefers-reduced-motion → ONE
+//    static frame (no loop), full cleanup on unmount, try/catch fallback to
+//    near-black.
 
 import { useEffect, useRef } from "react";
 
 // ── GLSL ────────────────────────────────────────────────────────────────────
 
 const VERTEX_SHADER = /* glsl */ `#version 300 es
-in vec2 position;
+in vec4 position;
 void main() {
-  gl_Position = vec4(position, 0.0, 1.0);
+  gl_Position = position;
 }
 `;
 
-// Flowing light-streams: stacked, domain-warped sine bands swept upward over
-// time. Each "stream" is a thin bright filament; many of them fanning out of a
-// shared origin near the top read as the landing beam BRANCHING. Color is
-// biased hard to violet/magenta (low green) and the whole field is dimmed.
+// Matthias Hurrle's clouds / light-streams fragment shader, VERBATIM except the
+// two RECOLOR lines (marked) which bias the streaks + cloud tint to violet, and
+// the final dim (col *= 0.6).
 const FRAGMENT_SHADER = /* glsl */ `#version 300 es
 precision highp float;
-
+out vec4 O;
 uniform vec2 resolution;
 uniform float time;
-
-out vec4 fragColor;
-
-// 2D rotation.
-mat2 rot(float a) {
-  float c = cos(a), s = sin(a);
-  return mat2(c, -s, s, c);
-}
-
-void main() {
-  // Aspect-corrected coords, centered horizontally; origin biased toward the
-  // top so the streams appear to fan DOWN-and-OUT from a single beam — the
-  // branching read.
-  vec2 uv = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
-  uv.y += 0.85; // push the convergence point up off-screen
-
-  float t = time * 0.18;
-
-  vec3 col = vec3(0.0);
-
-  // Accumulate several light-stream filaments. Each is a sine-distorted
-  // horizontal-ish band rotated to fan out from the shared origin.
-  const int STREAMS = 9;
-  for (int i = 0; i < STREAMS; i++) {
-    float fi = float(i);
-
-    // Fan angle: spread the streams in a cone, drifting slowly over time.
-    float ang = (fi - float(STREAMS - 1) * 0.5) * 0.16 + sin(t + fi) * 0.04;
-    vec2 p = rot(ang) * uv;
-
-    // Domain warp: stack two sines so the filament flows rather than sits.
-    float warp = sin(p.y * 1.4 + t * 2.0 + fi * 1.7) * 0.35
-               + sin(p.y * 3.1 - t * 1.3 + fi) * 0.15;
-    float d = abs(p.x + warp);
-
-    // Thin bright filament. Falloff with distance from origin so the cone
-    // dissolves outward.
-    float intensity = 0.012 / (d + 0.015);
-    intensity *= smoothstep(2.4, 0.0, length(p)); // fade with radius
-
-    // Per-stream violet/magenta tint, leaning magenta on alternating streams.
-    vec3 tint = mix(
-      vec3(0.62, 0.30, 0.95),   // violet
-      vec3(0.85, 0.18, 0.75),   // magenta
-      0.5 + 0.5 * sin(fi * 1.3)
-    );
-    col += intensity * tint;
+#define FC gl_FragCoord.xy
+#define T time
+#define R resolution
+#define MN min(R.x,R.y)
+float rnd(vec2 p){p=fract(p*vec2(12.9898,78.233));p+=dot(p,p+34.56);return fract(p.x*p.y);}
+float noise(in vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);float a=rnd(i),b=rnd(i+vec2(1,0)),c=rnd(i+vec2(0,1)),d=rnd(i+1.);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
+float fbm(vec2 p){float t=.0,a=1.;mat2 m=mat2(1.,-.5,.2,1.2);for(int i=0;i<5;i++){t+=a*noise(p);p*=2.*m;a*=.5;}return t;}
+float clouds(vec2 p){float d=1.,t=.0;for(float i=.0;i<3.;i++){float a=d*fbm(i*10.+p.x*.2+.2*(1.+i)*p.y+d+i*i+p);t=mix(t,d,a);d=a;p*=2./(i+1.);}return t;}
+void main(void){
+  vec2 uv=(FC-.5*R)/MN,st=uv*vec2(2,1);
+  vec3 col=vec3(0);
+  float bg=clouds(vec2(st.x+T*.5,-st.y));
+  uv*=1.-.3*(sin(T*.2)*.5+.5);
+  for(float i=1.;i<12.;i++){
+    uv+=.1*cos(i*vec2(.1+.01*i,.8)+i*i+T*.5+.1*uv.x);
+    vec2 p=uv;
+    float d=length(p);
+    // RECOLOR: violet/magenta streaks instead of rainbow cos(sin(i)*vec3(1,2,3))
+    col+=.00125/d*(cos(sin(i)*vec3(2.6,3.8,1.4))+1.);
+    float b=noise(i+p+bg*1.731);
+    col+=.002*b/length(max(p,vec2(b*p.x*.02,p.y)));
+    // RECOLOR: violet cloud tint instead of brown vec3(bg*.25,bg*.137,bg*.05)
+    col=mix(col,vec3(bg*.20,bg*.07,bg*.30),d);
   }
-
-  // Bias the whole field toward violet, suppress green hard.
-  col *= vec3(0.78, 0.40, 1.0);
-
-  // Soft tone-map so hot filament cores don't blow out to white.
-  col = col / (col + vec3(0.9));
-
-  // DIM: keep the canvas quiet enough that overlaid cards/text stay crisp.
-  col *= 0.6;
-
-  // Sit on near-black (matches --bg ≈ #0b0c0e) so the canvas blends with the
-  // page rather than reading as a black box.
-  vec3 base = vec3(0.043, 0.046, 0.055);
-  col += base;
-
-  fragColor = vec4(col, 1.0);
+  col*=0.6; // dim so overlaid content stays readable
+  O=vec4(col,1);
 }
 `;
 
@@ -113,7 +75,6 @@ void main() {
 class RunShaderRenderer {
   private gl: WebGL2RenderingContext;
   private program: WebGLProgram;
-  private vao: WebGLVertexArrayObject;
   private buffer: WebGLBuffer;
   private uResolution: WebGLUniformLocation | null;
   private uTime: WebGLUniformLocation | null;
@@ -147,22 +108,18 @@ class RunShaderRenderer {
     gl.deleteShader(frag);
     this.program = program;
 
-    // Full-screen triangle.
-    const vao = gl.createVertexArray();
+    // Full-screen TRIANGLE_STRIP quad over the four corner vertices.
     const buffer = gl.createBuffer();
-    if (!vao || !buffer) throw new Error("vao/buffer alloc failed");
-    gl.bindVertexArray(vao);
+    if (!buffer) throw new Error("buffer alloc failed");
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(
       gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 3, -1, -1, 3]),
+      new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
       gl.STATIC_DRAW,
     );
     const loc = gl.getAttribLocation(program, "position");
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    gl.bindVertexArray(null);
-    this.vao = vao;
     this.buffer = buffer;
 
     this.uResolution = gl.getUniformLocation(program, "resolution");
@@ -197,19 +154,17 @@ class RunShaderRenderer {
   render(timeSeconds: number): void {
     const { gl } = this;
     gl.useProgram(this.program);
-    gl.bindVertexArray(this.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
     if (this.uResolution) {
       gl.uniform2f(this.uResolution, gl.canvas.width, gl.canvas.height);
     }
     if (this.uTime) gl.uniform1f(this.uTime, timeSeconds);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.bindVertexArray(null);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
   dispose(): void {
     const { gl } = this;
     gl.deleteProgram(this.program);
-    gl.deleteVertexArray(this.vao);
     gl.deleteBuffer(this.buffer);
     // Free the GPU context promptly — this background outlives a long run.
     gl.getExtension("WEBGL_lose_context")?.loseContext();
@@ -225,9 +180,9 @@ export function RunShader() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Perf guard: cap pixel ratio LOWER than the landing (1.5 vs 1.75) since
-    // this background runs for the full multi-minute live run.
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    // Perf guard: pixel ratio = max(1, 0.5 * dpr), capped at ≤ 1.5.
+    const dpr = window.devicePixelRatio || 1;
+    const pixelRatio = Math.min(Math.max(1, 0.5 * dpr), 1.5);
 
     let renderer: RunShaderRenderer;
     try {
@@ -249,10 +204,9 @@ export function RunShader() {
 
     let rafId = 0;
     let running = false;
-    const start = performance.now();
 
-    function loop() {
-      renderer.render((performance.now() - start) / 1000);
+    function loop(now: number) {
+      renderer.render(now * 1e-3);
       rafId = requestAnimationFrame(loop);
     }
 
@@ -277,7 +231,7 @@ export function RunShader() {
     function onResize() {
       resize();
       // Repaint immediately so a resize under reduced-motion isn't left stale.
-      if (reduceMotion) renderer.render(0);
+      if (reduceMotion) renderer.render(performance.now() * 1e-3);
     }
 
     window.addEventListener("resize", onResize);
@@ -285,7 +239,7 @@ export function RunShader() {
 
     if (reduceMotion) {
       // Perf + a11y guard: render a SINGLE static frame, never start rAF.
-      renderer.render(0);
+      renderer.render(performance.now() * 1e-3);
     } else {
       startLoop();
     }
