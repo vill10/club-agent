@@ -26,6 +26,11 @@ interface TurnstileApi {
       "error-callback"?: () => void;
       "timeout-callback"?: () => void;
       theme?: "auto" | "light" | "dark";
+      // "interaction-only" keeps the widget HIDDEN for normal users (a token
+      // is still issued silently); it only renders a visible challenge if
+      // Cloudflare decides an interactive solve is required.
+      appearance?: "always" | "execute" | "interaction-only";
+      size?: "normal" | "compact" | "flexible";
     },
   ) => string;
   reset: (widgetId?: string) => void;
@@ -82,6 +87,10 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey: SITEKEY,
         theme: "dark",
+        // Hidden unless Cloudflare requires an interactive challenge. Token is
+        // still issued silently for normal users, so getFreshToken() works.
+        appearance: "interaction-only",
+        size: "flexible",
         callback: (token) => {
           tokenRef.current = token;
           // A fresh solve just landed — fulfil any waiting getFreshToken().
@@ -158,7 +167,10 @@ export const TurnstileGate = forwardRef<TurnstileGateHandle>(
           strategy="afterInteractive"
           onLoad={renderWidget}
         />
-        <div ref={containerRef} className="min-h-[65px]" />
+        {/* No reserved height / border / bg: under interaction-only the widget
+            is hidden for normal users, so the container collapses to nothing
+            (it only expands if Cloudflare injects a visible challenge). */}
+        <div ref={containerRef} />
       </>
     );
   },

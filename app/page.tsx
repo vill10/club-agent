@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
-import { BudgetMeter } from "@/components/budget-meter";
 import { IntentChips } from "@/components/intent-chips";
 import { QueryBox } from "@/components/query-box";
 import {
@@ -102,15 +101,19 @@ export default function Home() {
   const showQuery = step === "query" || !intent;
 
   return (
-    <main className="relative flex flex-1 flex-col bg-bg">
-      {/* "The beam" — fixed WebGL violet light-beam behind everything. */}
+    <main className="relative flex flex-1 flex-col bg-transparent">
+      {/* "The beam" — fixed WebGL violet light-beam behind everything.
+          The wrapper is bg-transparent (NOT bg-bg) so the fixed -z-10 canvas
+          shows through; <html>/<body> keep the dark --bg as the fallback. */}
       <WebGLShader />
 
-      {/* Radial scrim/vignette so the headline + input stay legible over the
-          beam's hot core. Sits above the canvas, below the content. */}
+      {/* Soft, smaller radial behind the headline for text contrast — NOT a
+          full-screen dark wash. Fades fully transparent well before the edges
+          so the beam stays visible across most of the viewport. Sits above the
+          canvas (z-0), below the content (z-10). */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,transparent_0%,var(--bg)_85%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_45%_30%_at_50%_38%,color-mix(in_oklch,var(--bg)_70%,transparent)_0%,transparent_70%)]"
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-16 sm:py-24">
@@ -118,9 +121,6 @@ export default function Home() {
           <h1 className="text-6xl font-extrabold tracking-tighter text-text md:text-8xl">
             Club Agent
           </h1>
-          <p className="mx-auto mt-4 text-3xl font-extrabold tracking-tighter text-accent sm:text-4xl md:text-5xl">
-            Найдём кружок за вас
-          </p>
           <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
             Опишите, что ищете — агент найдёт кружки и секции в Астане
             и соберёт всё в одном месте.
@@ -180,10 +180,6 @@ export default function Home() {
           <TurnstileGate ref={turnstileRef} />
         </div>
       </div>
-
-      <footer className="flex justify-center px-5 pb-8">
-        <BudgetMeter />
-      </footer>
     </main>
   );
 }

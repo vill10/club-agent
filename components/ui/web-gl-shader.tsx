@@ -37,7 +37,9 @@ float beam(vec2 p, float offset) {
   float d = length(vec2(p.x, (p.y + offset) * 8.0));
   float rate = pow(abs(2.0 * fract(time * 0.05) - 1.0), 3.0) * 0.3 + 0.1;
   d += sin(p.x * xScale + time) * sin(p.y * yScale + time) * distortion * rate;
-  return 0.0035 / abs(d);
+  // Brightness multiplier: raised from 0.0035 so the beam reads as an
+  // obviously-glowing violet streak on the near-black background.
+  return 0.011 / abs(d);
 }
 
 void main() {
@@ -54,12 +56,13 @@ void main() {
   // Map to a violet palette: boost R and B, keep G low so the beam glows
   // violet with magenta chromatic fringes. (~vec3(0.62, 0.30, 0.95) base tint.)
   vec3 col = vec3(0.0);
-  col += core * vec3(0.62, 0.30, 0.95);   // violet core
-  col += edgeA * vec3(0.85, 0.18, 0.75);  // magenta fringe
-  col += edgeB * vec3(0.45, 0.22, 1.00);  // blue-violet fringe
+  col += core * vec3(0.72, 0.36, 1.05);   // violet core
+  col += edgeA * vec3(0.95, 0.22, 0.85);  // magenta fringe
+  col += edgeB * vec3(0.52, 0.26, 1.10);  // blue-violet fringe
 
-  // Soft tone-map so the hot core doesn't blow out to white.
-  col = col / (col + vec3(0.85));
+  // Soft tone-map so the hot core doesn't blow out to white. A slightly higher
+  // shoulder keeps the violet saturated (more headroom before it desaturates).
+  col = col / (col + vec3(1.05));
 
   // Sit on near-black (matches --bg ≈ #0b0c0e ≈ 0.043 linear-ish) so the
   // canvas blends with the page rather than reading as a black box.
