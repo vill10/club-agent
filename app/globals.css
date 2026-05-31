@@ -186,6 +186,40 @@
   }
 }
 
+/* ── Text selection (violet-tinted, on-theme) ────────────────────────── */
+/* Replaces the browser/UA default (which rendered a clipped green box over   */
+/* selectable draft text). A translucent violet wash bounded to the text.     */
+::selection {
+  background: color-mix(in oklch, var(--accent) 35%, transparent);
+  color: var(--text);
+}
+::-moz-selection {
+  background: color-mix(in oklch, var(--accent) 35%, transparent);
+  color: var(--text);
+}
+
+/* ── Thin themed scrollbars ──────────────────────────────────────────── */
+/* Subtle on-theme scroll affordance for the run-view scroll panes — replaces */
+/* the clunky default black scrollbars. Applied via `.cl-scroll` on the panes. */
+.cl-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--text) 18%, transparent) transparent;
+}
+.cl-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.cl-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--text) 18%, transparent);
+  border-radius: 9999px;
+}
+.cl-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--text) 28%, transparent);
+}
+.cl-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* ── Activity stream (F.4) ───────────────────────────────────────────── */
 /* Signature entrance: new rows slide up + fade in. transform/opacity only. */
 @keyframes cl-activity-in {

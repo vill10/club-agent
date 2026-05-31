@@ -187,15 +187,23 @@ function DraftOutreach({ message }: { message: string }) {
       </button>
       {open && (
         <div className="mt-2 rounded-card bg-surface-raised p-3">
+          {/* The draft text lives in its own element with plain
+              `whitespace-pre-wrap` and NO blur/transform — so a double/triple-
+              click selects a clean rectangle bounded to the message (the card's
+              backdrop-blur sits on the parent article, not on this text node). */}
           <p className="whitespace-pre-wrap text-text">{message}</p>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={copy}
-            className="mt-2 text-accent"
-          >
-            {copied ? "Скопировано" : "Копировать"}
-          </Button>
+          {/* Copy button sits OUTSIDE the selectable text flow (its own block,
+              user-select-none) so selecting the draft never sweeps it in. */}
+          <div className="mt-2 select-none">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={copy}
+              className="text-accent"
+            >
+              {copied ? "Скопировано" : "Копировать"}
+            </Button>
+          </div>
         </div>
       )}
     </div>

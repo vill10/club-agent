@@ -105,7 +105,7 @@ export function ActivityStream({ events, status }: ActivityStreamProps) {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-1 py-2"
+        className="cl-scroll flex-1 overflow-y-auto px-1 py-2"
       >
         <ol className="flex flex-col gap-3">
           {events.map((event) => (
