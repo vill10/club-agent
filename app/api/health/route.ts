@@ -1,35 +1,51 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { resolveDbPath } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const dbPath = process.env.DATABASE_PATH ?? "./dev.sqlite (DEFAULT — env unset)";
-  const resolved = path.resolve(dbPath.replace(" (DEFAULT — env unset)", ""));
+  const resolved = resolveDbPath();
   const dir = path.dirname(resolved);
-  let dirExists = false,
-    dirWritable = false,
-    fileExists = false,
-    fileSize = -1;
+
+  let dbDirExists = false,
+    dbDirWritable = false,
+    dbFileExists = false,
+    dbFileSizeBytes = -1;
   try {
-    dirExists = fs.existsSync(dir);
+    dbDirExists = fs.existsSync(dir);
   } catch {}
   try {
     fs.accessSync(dir, fs.constants.W_OK);
-    dirWritable = true;
+    dbDirWritable = true;
   } catch {}
   try {
-    fileExists = fs.existsSync(resolved);
-    if (fileExists) fileSize = fs.statSync(resolved).size;
+    dbFileExists = fs.existsSync(resolved);
+    if (dbFileExists) dbFileSizeBytes = fs.statSync(resolved).size;
   } catch {}
+
+  // Dedicated /data volume probe (independent of the resolved path).
+  let dataDirExists = false,
+    dataDirWritable = false;
+  try {
+    dataDirExists = fs.existsSync("/data");
+  } catch {}
+  try {
+    fs.accessSync("/data", fs.constants.W_OK);
+    dataDirWritable = true;
+  } catch {}
+
   return Response.json({
     databasePathEnv: process.env.DATABASE_PATH ?? null,
     resolvedDbPath: resolved,
     dbDir: dir,
-    dbDirExists: dirExists,
-    dbDirWritable: dirWritable,
-    dbFileExists: fileExists,
-    dbFileSizeBytes: fileSize,
+    dbDirExists,
+    dbDirWritable,
+    dbFileExists,
+    dbFileSizeBytes,
+    dataDirExists,
+    dataDirWritable,
     cwd: process.cwd(),
   });
 }

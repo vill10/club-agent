@@ -1,4 +1,6 @@
 import Database from "better-sqlite3";
+import fs from "node:fs";
+import path from "node:path";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS runs (
@@ -53,9 +55,39 @@ CREATE TABLE IF NOT EXISTS ip_ledger (
 );
 `;
 
+// Resolve the SQLite path robustly, independent of a stale `DATABASE_PATH`.
+//
+// Precedence:
+//   1. A genuinely-custom `DATABASE_PATH` (anything other than the dev default)
+//      is always honored.
+//   2. Otherwise, if `/data` is writable (Railway persistent volume mounted
+//      there), use `/data/club-agent.sqlite` — this survives redeploys.
+//   3. Otherwise (local dev, or no volume), fall back to the ephemeral dev db.
+//
+// This means the bad live env value `./dev.sqlite` is treated as "not
+// configured" and never overrides the persistent volume.
+export function resolveDbPath(): string {
+  const explicit = process.env.DATABASE_PATH?.trim();
+  const isRealExplicit =
+    explicit && explicit !== "./dev.sqlite" && explicit !== "dev.sqlite";
+  if (isRealExplicit) return explicit!;
+
+  // Auto-use the persistent volume if /data is writable.
+  try {
+    fs.mkdirSync("/data", { recursive: true }); // no-op if exists
+    fs.accessSync("/data", fs.constants.W_OK);
+    return "/data/club-agent.sqlite";
+  } catch {
+    // Fallback (local dev, or no volume): ephemeral dev db.
+    return "./dev.sqlite";
+  }
+}
+
 function createConnection(): Database.Database {
-  const path = process.env.DATABASE_PATH ?? "./dev.sqlite";
-  const connection = new Database(path);
+  const dbPath = resolveDbPath();
+  // Ensure the parent dir exists so a fresh /data (or any custom path) works.
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const connection = new Database(dbPath);
   connection.pragma("journal_mode = WAL");
   connection.pragma("foreign_keys = ON");
   connection.exec(SCHEMA);
