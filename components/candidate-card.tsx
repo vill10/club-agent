@@ -1,6 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Baby,
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  CircleDollarSign,
+  Clock,
+  Globe,
+  Link,
+  type LucideIcon,
+  MapPin,
+  Phone,
+  Send,
+} from "lucide-react";
 
 import { ConfidenceBadge } from "@/components/confidence-badge";
 import { Button } from "@/components/ui/button";
@@ -9,12 +23,13 @@ import { cn } from "@/lib/utils";
 import type { Card, CardField, Contact, ContactChannel } from "@/types";
 
 // ── Channel presentation ────────────────────────────────────
-const CHANNEL_ICON: Record<ContactChannel, string> = {
-  telegram: "💬",
-  whatsapp: "🟢",
-  phone: "📞",
-  instagram: "📷",
-  website: "🌐",
+// lucide v1.17 ships no `Instagram` mark; `Camera` stands in for it.
+const CHANNEL_ICON: Record<ContactChannel, LucideIcon> = {
+  telegram: Send,
+  whatsapp: Phone,
+  phone: Phone,
+  instagram: Camera,
+  website: Globe,
 };
 
 // ── Deep-link construction (exported for unit tests) ─────────
@@ -64,16 +79,16 @@ function truncateUrl(url: string, max = 36): string {
 
 // ── Detail row ──────────────────────────────────────────────
 function DetailRow({
-  icon,
+  icon: Icon,
   field,
 }: {
-  icon: string;
+  icon: LucideIcon;
   field?: CardField<string>;
 }) {
   if (!field) return null;
   return (
-    <p className="flex flex-wrap items-center gap-x-1 text-sm text-text">
-      <span aria-hidden>{icon}</span>
+    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-text">
+      <Icon size={14} aria-hidden className="shrink-0 text-muted" />
       <span>{field.value}</span>
       <ConfidenceBadge
         confidence={field.confidence}
@@ -108,10 +123,11 @@ function ContactRow({
   }
 
   const ext = { target: "_blank", rel: "noopener noreferrer" } as const;
+  const ChannelIcon = CHANNEL_ICON[channel];
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-      <span aria-hidden>{CHANNEL_ICON[channel]}</span>
+      <ChannelIcon size={14} aria-hidden className="shrink-0 text-muted" />
       {display ? (
         <a
           href={display.href}
@@ -159,9 +175,14 @@ function DraftOutreach({ message }: { message: string }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="text-faint transition-colors hover:text-muted"
+        className="inline-flex items-center gap-1 text-faint transition-colors hover:text-muted"
       >
-        {open ? "▲" : "▼"} Готовое сообщение
+        {open ? (
+          <ChevronUp size={14} aria-hidden className="shrink-0" />
+        ) : (
+          <ChevronDown size={14} aria-hidden className="shrink-0" />
+        )}
+        Готовое сообщение
       </button>
       {open && (
         <div className="mt-2 rounded-card bg-surface-raised p-3">
@@ -220,8 +241,8 @@ export function CandidateCard({ card }: { card: Card }) {
 
       {/* Location */}
       {hasLocation && (
-        <p className="mt-2 flex flex-wrap items-center gap-x-1 text-sm text-muted">
-          <span aria-hidden>📍</span>
+        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm text-muted">
+          <MapPin size={14} aria-hidden className="shrink-0 text-muted" />
           {district && (
             <span className="inline-flex items-center text-text">
               {district.value}
@@ -246,9 +267,9 @@ export function CandidateCard({ card }: { card: Card }) {
 
       {/* Details */}
       <div className="mt-2 space-y-1">
-        <DetailRow icon="⏰" field={schedule} />
-        <DetailRow icon="💰" field={priceRange} />
-        <DetailRow icon="👶" field={ageRange} />
+        <DetailRow icon={Clock} field={schedule} />
+        <DetailRow icon={CircleDollarSign} field={priceRange} />
+        <DetailRow icon={Baby} field={ageRange} />
       </div>
 
       {/* Match reason */}
@@ -281,7 +302,10 @@ export function CandidateCard({ card }: { card: Card }) {
       {/* Sources */}
       {sources.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
-          <span>Источники:</span>
+          <span className="inline-flex items-center gap-1">
+            <Link size={12} aria-hidden className="shrink-0" />
+            Источники:
+          </span>
           {sources.map((url) => (
             <a
               key={url}
@@ -325,8 +349,8 @@ export function CandidateCardSkeleton({
         )}
       </header>
 
-      <p className="mt-2 flex items-center gap-1 text-sm text-muted">
-        <span aria-hidden>📍</span>
+      <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
+        <MapPin size={14} aria-hidden className="shrink-0 text-muted" />
         {district ? (
           <span className="text-text">{district}</span>
         ) : (

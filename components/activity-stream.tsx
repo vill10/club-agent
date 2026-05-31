@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowDown,
+  CheckCircle2,
+  Globe,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  Search,
+  Sparkles,
+} from "lucide-react";
 
 import type { RunEvent, RunStatus } from "@/types";
 import { cn } from "@/lib/utils";
@@ -19,7 +30,7 @@ interface ActivityStreamProps {
  * Presentational only: renders an ordered array of RunEvent as a calm,
  * bottom-anchored, live-updating list. New rows slide+fade in. Auto-scrolls to
  * the newest row unless the user has scrolled up (scroll-lock), in which case a
- * subtle "↓ новые события" affordance appears instead of yanking them down.
+ * subtle "new events" jump affordance appears instead of yanking them down.
  *
  * No data fetching — events arrive via props (useRunStream on the run page).
  */
@@ -117,9 +128,10 @@ export function ActivityStream({ events, status }: ActivityStreamProps) {
         <button
           type="button"
           onClick={jumpToBottom}
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-pill bg-accent-subtle px-4 py-1.5 text-sm text-text shadow-[0_0_24px_-8px_var(--accent-glow)] transition-colors hover:bg-accent"
+          className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-pill bg-accent-subtle px-4 py-1.5 text-sm text-text shadow-[0_0_24px_-8px_var(--accent-glow)] transition-colors hover:bg-accent"
         >
-          ↓ новые события
+          <ArrowDown size={14} aria-hidden className="shrink-0" />
+          новые события
         </button>
       )}
     </div>
@@ -131,7 +143,7 @@ interface ActivityRowProps {
   inFlight: boolean;
 }
 
-/** A single feed row: emoji + text, styled per kind. Animates in on mount. */
+/** A single feed row: icon + text, styled per kind. Animates in on mount. */
 function ActivityRow({ event, inFlight }: ActivityRowProps) {
   const { payload } = event;
 
@@ -141,7 +153,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "tool_call":
       content = (
         <span className="flex items-center gap-2 text-sm italic text-muted">
-          <span className="shrink-0">🔍</span>
+          <Search size={14} aria-hidden className="shrink-0 text-muted" />
           <span className="min-w-0 truncate">{payload.label}</span>
           {inFlight && <Spinner />}
         </span>
@@ -151,7 +163,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "tool_result":
       content = (
         <span className="flex items-center gap-2 text-sm text-text">
-          <span className="shrink-0">📍</span>
+          <MapPin size={14} aria-hidden className="shrink-0 text-muted" />
           <span className="min-w-0 truncate">{payload.label}</span>
           {typeof payload.count === "number" && (
             <span className="shrink-0 rounded-pill bg-accent-subtle px-2 py-0.5 text-xs tabular-nums text-text">
@@ -165,7 +177,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "thinking":
       content = (
         <span className="flex items-start gap-2 text-sm text-faint">
-          <span className="shrink-0">🤔</span>
+          <Sparkles size={14} aria-hidden className="mt-0.5 shrink-0 text-faint" />
           <span className="min-w-0 break-words">{payload.text}</span>
         </span>
       );
@@ -174,7 +186,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "message":
       content = (
         <span className="flex items-start gap-2 text-sm text-text">
-          <span className="shrink-0">💬</span>
+          <MessageSquare size={14} aria-hidden className="mt-0.5 shrink-0 text-muted" />
           <span className="min-w-0 break-words">{payload.text}</span>
         </span>
       );
@@ -183,7 +195,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "card_update":
       content = (
         <span className="flex items-center gap-2 text-sm text-muted">
-          <span className="shrink-0">🌐</span>
+          <Globe size={14} aria-hidden className="shrink-0 text-muted" />
           <span className="min-w-0 truncate">Карточка обновлена</span>
         </span>
       );
@@ -192,7 +204,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "error":
       content = (
         <span className="flex items-start gap-2 text-sm font-medium text-warning">
-          <span className="shrink-0">⚠️</span>
+          <AlertTriangle size={14} aria-hidden className="mt-0.5 shrink-0 text-warning" />
           <span className="min-w-0 break-words">{payload.message}</span>
         </span>
       );
@@ -201,7 +213,7 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
     case "final":
       content = (
         <span className="flex items-center gap-2 text-sm font-semibold text-success">
-          <span className="shrink-0">✅</span>
+          <CheckCircle2 size={16} aria-hidden className="shrink-0 text-success" />
           <span className="min-w-0">
             Поиск завершён — найдено клубов:{" "}
             <span className="tabular-nums">{payload.cardCount}</span>
@@ -217,12 +229,13 @@ function ActivityRow({ event, inFlight }: ActivityRowProps) {
   return <li className="cl-activity-row">{content}</li>;
 }
 
-/** Small in-flight spinner badge. Pauses (hidden motion) under reduced-motion. */
+/** Small in-flight spinner. Hidden (no motion) under reduced-motion. */
 function Spinner() {
   return (
-    <span
+    <Loader2
+      size={14}
       aria-label="выполняется"
-      className="cl-spinner inline-block size-3 shrink-0 rounded-full border-2 border-accent-subtle border-t-accent motion-reduce:hidden"
+      className="shrink-0 animate-spin text-accent motion-reduce:hidden"
     />
   );
 }
