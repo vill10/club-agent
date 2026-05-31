@@ -59,6 +59,21 @@ function emit(runId: string, kind: RunEventKind, payload: RunEventPayload): void
   emitRunEvent(runId, e);
 }
 
+// Max length for an assistant `message` event surfaced in the activity feed.
+// Short narration lines pass through intact; a wall of markdown (e.g. a final
+// ranked-list summary the model sometimes emits) gets cut to a clean one-liner.
+// The cards ARE the deliverable; the feed only narrates progress.
+const MESSAGE_MAX_CHARS = 180;
+
+function truncateNarration(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= MESSAGE_MAX_CHARS) return trimmed;
+  // Collapse internal whitespace/newlines so a multi-line markdown blob reads
+  // as a single clean line before we clip it.
+  const flattened = trimmed.replace(/\s+/g, " ");
+  return `${flattened.slice(0, MESSAGE_MAX_CHARS).trimEnd()}…`;
+}
+
 // Per-response USD estimate from token usage. Cache reads/writes are billed at
 // distinct rates; cache_creation tokens are NOT also counted as input_tokens by
 // the API, so summing the four buckets is correct.
@@ -185,7 +200,10 @@ export async function runAgent(
       // Surface the model's narration into the activity stream.
       for (const block of response.content) {
         if (block.type === "text" && block.text.trim()) {
-          emit(runId, "message", { kind: "message", text: block.text.trim() });
+          emit(runId, "message", {
+            kind: "message",
+            text: truncateNarration(block.text),
+          });
         }
       }
 
