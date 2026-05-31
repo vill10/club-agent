@@ -32,40 +32,42 @@ uniform float yScale;
 uniform float distortion;
 
 // Single beam-intensity sample with a small horizontal offset used to fake
-// chromatic aberration at the beam edges.
+// chromatic aberration at the beam edges. The y-axis is compressed so the
+// energy concentrates into a horizontal streak — but only ~3.2x (not 8x) so
+// the beam reads as a broad, soft band of light rather than a hairline.
 float beam(vec2 p, float offset) {
-  float d = length(vec2(p.x, (p.y + offset) * 8.0));
+  float d = length(vec2(p.x, (p.y + offset) * 4.2));
   float rate = pow(abs(2.0 * fract(time * 0.05) - 1.0), 3.0) * 0.3 + 0.1;
   d += sin(p.x * xScale + time) * sin(p.y * yScale + time) * distortion * rate;
-  // Brightness multiplier: raised from 0.0035 so the beam reads as an
-  // obviously-glowing violet streak on the near-black background.
-  return 0.011 / abs(d);
+  // Brightness multiplier — the beam's peak energy. Raised substantially so the
+  // streak is an obviously-glowing violet light-beam, not a faint scrim.
+  return 0.04 / abs(d);
 }
 
 void main() {
   // Normalized, aspect-corrected coords centered on the screen.
   vec2 p = (gl_FragCoord.xy * 2.0 - resolution) / min(resolution.x, resolution.y);
 
-  // Chromatic split: sample the beam at three tiny vertical offsets. The
+  // Chromatic split: sample the beam at three small vertical offsets. The
   // center carries most of the energy; the outer two bleed magenta/violet at
   // the edges rather than full rainbow.
   float core = beam(p, 0.0);
-  float edgeA = beam(p, 0.0016);
-  float edgeB = beam(p, -0.0016);
+  float edgeA = beam(p, 0.014);
+  float edgeB = beam(p, -0.014);
 
   // Map to a violet palette: boost R and B, keep G low so the beam glows
-  // violet with magenta chromatic fringes. (~vec3(0.62, 0.30, 0.95) base tint.)
+  // violet with magenta chromatic fringes.
   vec3 col = vec3(0.0);
   col += core * vec3(0.72, 0.36, 1.05);   // violet core
   col += edgeA * vec3(0.95, 0.22, 0.85);  // magenta fringe
   col += edgeB * vec3(0.52, 0.26, 1.10);  // blue-violet fringe
 
-  // Soft tone-map so the hot core doesn't blow out to white. A slightly higher
-  // shoulder keeps the violet saturated (more headroom before it desaturates).
-  col = col / (col + vec3(1.05));
+  // Soft tone-map so the hot core doesn't blow out to white but the beam body
+  // stays bright and saturated. Higher shoulder = more headroom before white.
+  col = col / (col + vec3(0.78));
 
-  // Sit on near-black (matches --bg ≈ #0b0c0e ≈ 0.043 linear-ish) so the
-  // canvas blends with the page rather than reading as a black box.
+  // Sit on near-black (matches --bg ≈ #0b0c0e) so the canvas blends with the
+  // page rather than reading as a black box.
   vec3 base = vec3(0.043, 0.046, 0.055);
   col += base;
 

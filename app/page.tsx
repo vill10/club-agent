@@ -113,7 +113,7 @@ export default function Home() {
           canvas (z-0), below the content (z-10). */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_45%_30%_at_50%_38%,color-mix(in_oklch,var(--bg)_70%,transparent)_0%,transparent_70%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_38%_22%_at_50%_30%,color-mix(in_oklch,var(--bg)_55%,transparent)_0%,transparent_72%)]"
       />
 
       <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-16 sm:py-24">
@@ -122,8 +122,8 @@ export default function Home() {
             Club Agent
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
-            Опишите, что ищете — агент найдёт кружки и секции в Астане
-            и соберёт всё в одном месте.
+            Агент сам обыщет 2ГИС, сайты и соцсети, найдёт подходящие кружки
+            и секции в Астане и соберёт всё в одном месте.
           </p>
         </header>
 
