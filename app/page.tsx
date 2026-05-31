@@ -10,6 +10,7 @@ import {
   TurnstileGate,
   type TurnstileGateHandle,
 } from "@/components/turnstile-gate";
+import { WebGLShader } from "@/components/ui/web-gl-shader";
 import type { CreateRunResponse, Intent } from "@/types";
 
 type RunStatus = "idle" | "submitting" | "budget" | "rate_limited" | "error";
@@ -98,20 +99,35 @@ export default function Home() {
     }
   }
 
+  const showQuery = step === "query" || !intent;
+
   return (
-    <main className="flex flex-1 flex-col bg-bg">
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-16 sm:py-24">
+    <main className="relative flex flex-1 flex-col bg-bg">
+      {/* "The beam" — fixed WebGL violet light-beam behind everything. */}
+      <WebGLShader />
+
+      {/* Radial scrim/vignette so the headline + input stay legible over the
+          beam's hot core. Sits above the canvas, below the content. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,transparent_0%,var(--bg)_85%)]"
+      />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-5 py-16 sm:py-24">
         <header className="mb-10 text-center sm:mb-12">
-          <h1 className="text-5xl font-bold tracking-tight text-accent sm:text-6xl">
+          <h1 className="text-6xl font-extrabold tracking-tighter text-text md:text-8xl">
             Club Agent
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            Опишите, что ищете — агент сам найдёт кружки и секции в Астане
+          <p className="mx-auto mt-4 text-3xl font-extrabold tracking-tighter text-accent sm:text-4xl md:text-5xl">
+            Найдём кружок за вас
+          </p>
+          <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
+            Опишите, что ищете — агент найдёт кружки и секции в Астане
             и соберёт всё в одном месте.
           </p>
         </header>
 
-        {step === "query" || !intent ? (
+        {showQuery ? (
           <QueryBox onExtracted={handleExtracted} />
         ) : (
           <div className="w-full">
